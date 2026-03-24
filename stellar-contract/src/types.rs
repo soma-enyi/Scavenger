@@ -1315,3 +1315,13 @@ mod tests {
     }
 }
 
+/// Global contract metrics
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GlobalMetrics {
+    /// Total number of waste items logged in the system
+    pub total_wastes_count: u64,
+    /// Total amount of tokens earned across all participants
+    pub total_tokens_earned: u128,
+}
+

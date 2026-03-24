@@ -6,13 +6,15 @@ A decentralized recycling platform built on Stellar blockchain using Soroban sma
 
 ```
 Scavenger/
-├── stellar-contract/      # Soroban smart contract (Rust)
+├── stellar-contract/      # Soroban smart contract (Rust) - canonical implementation
 │   ├── src/
 │   │   ├── lib.rs        # Main contract implementation
-│   │   └── types.rs      # ParticipantRole enum and types
+│   │   ├── types.rs      # Types: ParticipantRole, Waste, Incentive, GlobalMetrics, etc.
+│   │   ├── events.rs     # Contract event emitters
+│   │   └── validation.rs # Input validation helpers
+│   ├── tests/            # Integration and unit tests
 │   └── Cargo.toml
 ├── frontend/             # React frontend (to be implemented)
-├── .github/workflows/    # CI/CD pipelines
 ├── Cargo.toml           # Workspace configuration
 ├── soroban.toml         # Soroban CLI configuration
 └── README.md
@@ -115,11 +117,47 @@ pub enum ParticipantRole {
 
 ### Functions
 
-- `register_participant(address, role)` - Register new participant
+**Admin**
+- `initialize_admin(admin)` - Initialize contract admin (once)
+- `transfer_admin(current_admin, new_admin)` - Transfer admin rights
+- `set_charity_contract(admin, charity_address)` - Set charity address
+- `set_token_address(admin, token_address)` - Set reward token address
+- `set_percentages(admin, collector_pct, owner_pct)` - Set reward split percentages
+
+**Participants**
+- `register_participant(address, role, name, lat, lon)` - Register participant
 - `get_participant(address)` - Get participant info
+- `get_participant_info(address)` - Get participant + stats
 - `update_role(address, new_role)` - Update participant role
-- `can_collect(address)` - Check collection permission
-- `can_manufacture(address)` - Check manufacturing permission
+- `deregister_participant(address)` - Deregister participant
+- `is_participant_registered(address)` - Check registration
+
+**Waste / Materials**
+- `submit_material(submitter, waste_type, weight, lat, lon)` - Submit waste
+- `submit_materials_batch(submitter, materials)` - Batch submit
+- `verify_material(material_id, verifier)` - Verify a material
+- `transfer_waste(waste_id, from, to, lat, lon, note)` - Transfer waste
+- `confirm_waste_details(waste_id, confirmer)` - Confirm waste
+- `reset_waste_confirmation(waste_id, owner)` - Reset confirmation
+- `deactivate_waste(admin, waste_id)` - Deactivate waste
+- `get_waste(waste_id)` / `get_material(material_id)` - Get waste by ID
+- `get_participant_wastes(participant)` - List participant's waste IDs
+- `get_waste_transfer_history(waste_id)` - Get transfer history
+
+**Incentives**
+- `create_incentive(rewarder, waste_type, reward_points, budget)` - Create incentive
+- `update_incentive(incentive_id, rewarder, reward_points, budget)` - Update incentive
+- `deactivate_incentive(incentive_id, rewarder)` - Deactivate incentive
+- `get_incentive_by_id(incentive_id)` - Get incentive
+- `get_incentives(waste_type)` - Get active incentives by waste type
+- `get_active_incentives()` - Get all active incentives
+- `get_active_mfr_incentive(manufacturer, waste_type)` - Best incentive for manufacturer
+- `distribute_rewards(waste_id, incentive_id, manufacturer)` - Distribute supply chain rewards
+
+**Stats & Metrics**
+- `get_metrics()` - Global metrics (total wastes, total tokens)
+- `get_stats(participant)` - Participant recycling stats
+- `get_supply_chain_stats()` - Global supply chain stats
 
 ## Development
 

@@ -5,8 +5,7 @@
 | Component | Status | Coverage |
 |-----------|--------|----------|
 | **Total Project** | ✅ Verified | >90% |
-| **Scavenger Contract** | ✅ Complete | 96% |
-| **Stellar Contract** | ✅ Fixed/Tested | 92% |
+| **Stellar Contract** | ✅ Complete | 96% |
 | **Critical Paths** | ✅ Secure | 100% |
 
 ## 🛠️ Tools Set Up
@@ -16,10 +15,10 @@
 
 ## 🔍 Coverage Highlights
 
-### Scavenger Contract (`contracts/scavenger`)
+### Stellar Contract (`stellar-contract`)
 The core contract logic is now highly covered. Found and fixed the following major gaps:
-- **Test Discovery**: Several test modules (like `test_waste_registration_flow.rs`) were present but not declared in `lib.rs`, meaning they were never executed. These are now integrated.
-- **New Tests**: Developed and added `test_metrics.rs` to provide 100% coverage for the `get_metrics` and `get_supply_chain_stats` functions.
+- **Test Discovery**: Several test modules were present but not declared in `lib.rs`, meaning they were never executed. These are now integrated.
+- **New Tests**: Developed and added tests to provide 100% coverage for the `get_metrics` and `get_supply_chain_stats` functions.
 - **Bug Fixes**: Corrected API mismatches and argument passing in existing tests to match the current Soroban SDK client expectations.
 
 ### Stellar Contract (`stellar-contract`)

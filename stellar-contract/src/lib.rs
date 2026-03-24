@@ -5,12 +5,12 @@ mod types;
 mod validation;
 
 pub use types::{
-    Incentive, Material, ParticipantRole, RecyclingStats, TransferItemType, TransferRecord, TransferStatus,
-    Waste, WasteTransfer, WasteType,
+    GlobalMetrics, Incentive, Material, ParticipantRole, RecyclingStats, TransferItemType,
+    TransferRecord, TransferStatus, Waste, WasteTransfer, WasteType,
 };
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, Address, Env, String, Symbol, Vec,
+    contract, contractimpl, contracttype, symbol_short, token, Address, Env, String, Symbol, Vec,
 };
 
 // Storage keys
@@ -1800,5 +1800,111 @@ impl ScavengerContract {
         Self::set_incentive(&env, incentive_id, &incentive);
 
         incentive
+    }
+
+    // ========== Global Metrics ==========
+
+    /// Get global contract metrics (total waste count and total tokens earned)
+    pub fn get_metrics(env: Env) -> types::GlobalMetrics {
+        let total_wastes_count: u64 = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("MAT_CNT"))
+            .unwrap_or(0);
+        let total_tokens_earned: u128 = env
+            .storage()
+            .instance()
+            .get(&TOTAL_TOKENS)
+            .unwrap_or(0);
+        types::GlobalMetrics {
+            total_wastes_count,
+            total_tokens_earned,
+        }
+    }
+
+    // ========== Admin Transfer ==========
+
+    /// Transfer admin rights to a new address (current admin only)
+    pub fn transfer_admin(env: Env, current_admin: Address, new_admin: Address) {
+        Self::require_admin(&env, &current_admin);
+        env.storage().instance().set(&ADMIN, &new_admin);
+    }
+
+    // ========== Incentive-Based Reward Distribution ==========
+
+    /// Distribute rewards through the supply chain for a confirmed material using an incentive.
+    /// Rewards collectors in the transfer history, the original submitter, and the current owner.
+    /// Returns the total reward distributed.
+    pub fn distribute_rewards(
+        env: Env,
+        waste_id: u64,
+        incentive_id: u64,
+        manufacturer: Address,
+    ) -> i128 {
+        manufacturer.require_auth();
+
+        let material = Self::get_waste_internal(&env, waste_id).expect("Material not found");
+        assert!(material.verified, "Material must be confirmed");
+
+        let mut incentive =
+            Self::get_incentive_internal(&env, incentive_id).expect("Incentive not found");
+        assert!(incentive.rewarder == manufacturer, "Only incentive creator can distribute rewards");
+        assert!(incentive.waste_type == material.waste_type, "Waste type mismatch");
+        assert!(incentive.active, "Incentive not active");
+
+        let weight_kg = material.weight / 1000;
+        let total_reward = (incentive.reward_points as i128) * (weight_kg as i128);
+        assert!(
+            (total_reward as u64) <= incentive.remaining_budget,
+            "Insufficient incentive budget"
+        );
+
+        let transfers = Self::get_transfer_history(env.clone(), waste_id);
+        let collector_pct: u32 = env.storage().instance().get(&COLLECTOR_PCT).unwrap_or(5);
+        let owner_pct: u32 = env.storage().instance().get(&OWNER_PCT).unwrap_or(50);
+
+        let token_address: Address = env
+            .storage()
+            .instance()
+            .get(&TOKEN_ADDR)
+            .expect("Token address not set");
+        let token_client = token::Client::new(&env, &token_address);
+
+        let collector_share = (total_reward * (collector_pct as i128)) / 100;
+        let owner_share = (total_reward * (owner_pct as i128)) / 100;
+        let mut total_distributed: i128 = 0;
+
+        for transfer in transfers.iter() {
+            let key = (transfer.to.clone(),);
+            if let Some(p) = env.storage().instance().get::<_, Participant>(&key) {
+                if p.role.can_collect_materials() && !p.role.can_manufacture() {
+                    token_client.transfer(&manufacturer, &transfer.to, &collector_share);
+                    Self::update_participant_stats(&env, &transfer.to, 0, collector_share as u64);
+                    events::emit_tokens_rewarded(&env, &transfer.to, collector_share as u128, waste_id);
+                    total_distributed += collector_share;
+                }
+            }
+        }
+
+        token_client.transfer(&manufacturer, &material.submitter, &owner_share);
+        Self::update_participant_stats(&env, &material.submitter, 0, owner_share as u64);
+        events::emit_tokens_rewarded(&env, &material.submitter, owner_share as u128, waste_id);
+        total_distributed += owner_share;
+
+        let recycler_amount = total_reward - total_distributed;
+        if recycler_amount > 0 {
+            token_client.transfer(&manufacturer, &material.submitter, &recycler_amount);
+            Self::update_participant_stats(&env, &material.submitter, 0, recycler_amount as u64);
+            events::emit_tokens_rewarded(&env, &material.submitter, recycler_amount as u128, waste_id);
+        }
+
+        incentive.remaining_budget = incentive.remaining_budget.saturating_sub(total_reward as u64);
+        if incentive.remaining_budget == 0 {
+            incentive.active = false;
+        }
+        Self::set_incentive(&env, incentive_id, &incentive);
+        Self::add_to_total_tokens(&env, total_reward as u128);
+
+        total_reward
     }
 }
