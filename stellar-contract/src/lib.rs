@@ -464,25 +464,33 @@ impl ScavengerContract {
         }
     }
 
-    /// Helper to distribute token rewards and emit events through the supply chain
+    /// Helper to distribute token rewards and emit events through the supply chain.
+    /// Batches reads and merges writes to minimise storage round-trips.
     fn _reward_tokens(
         env: &Env,
         waste_id: u64,
         total_reward: u128,
     ) {
-        let transfers = Self::get_transfer_history(env.clone(), waste_id);
-        
+        if total_reward == 0 {
+            return;
+        }
+
+        // Single read for each percentage (2 reads total, unchanged)
         let collector_pct: u32 = env.storage().instance().get(&COLLECTOR_PCT).unwrap_or(5);
         let owner_pct: u32 = env.storage().instance().get(&OWNER_PCT).unwrap_or(50);
-        
+
         let collector_share = (total_reward * (collector_pct as u128)) / 100;
         let owner_share = (total_reward * (owner_pct as u128)) / 100;
-        
+
+        // Read transfer history once
+        let transfers = Self::get_transfer_history(env.clone(), waste_id);
+
         let mut total_distributed: u128 = 0;
-        
-        // Iterate through transfer history and reward collectors
+
+        // Reward collectors — one read per unique transfer recipient
         for transfer in transfers.iter() {
-            let participant: Option<Participant> = env.storage().instance().get(&(transfer.to.clone(),));
+            let key = (transfer.to.clone(),);
+            let participant: Option<Participant> = env.storage().instance().get(&key);
             if let Some(p) = participant {
                 if matches!(p.role, ParticipantRole::Collector) {
                     total_distributed += collector_share;
@@ -491,17 +499,31 @@ impl ScavengerContract {
                 }
             }
         }
-        
-        // Reward original owner and current recycler
+
+        // Reward the current owner (submitter) — merge owner_share + remainder into one
+        // read-modify-write instead of two separate calls.
         if let Some(material) = Self::get_waste_internal(env, waste_id) {
-            total_distributed += owner_share;
-            Self::update_participant_stats(env, &material.submitter, 0, owner_share as u64);
-            events::emit_tokens_rewarded(env, &material.submitter, owner_share, waste_id);
-            
-            let recycler_amount = total_reward.saturating_sub(total_distributed);
-            if recycler_amount > 0 {
-                Self::update_participant_stats(env, &material.submitter, 0, recycler_amount as u64);
-                events::emit_tokens_rewarded(env, &material.submitter, recycler_amount, waste_id);
+            let recycler_amount = total_reward.saturating_sub(total_distributed + owner_share);
+            let submitter_total = owner_share + recycler_amount; // = total_reward - total_distributed
+
+            if submitter_total > 0 {
+                let key = (material.submitter.clone(),);
+                if let Some(mut participant) = env.storage().instance().get::<_, Participant>(&key) {
+                    participant.total_tokens_earned = participant
+                        .total_tokens_earned
+                        .checked_add(submitter_total as u128)
+                        .expect("Overflow in total_tokens_earned");
+                    env.storage().instance().set(&key, &participant);
+                }
+
+                // Single global-tokens update for the submitter's combined share
+                Self::add_to_total_tokens(env, submitter_total as u128);
+
+                // Emit two events to preserve existing behaviour / test expectations
+                events::emit_tokens_rewarded(env, &material.submitter, owner_share, waste_id);
+                if recycler_amount > 0 {
+                    events::emit_tokens_rewarded(env, &material.submitter, recycler_amount, waste_id);
+                }
             }
         }
     }
