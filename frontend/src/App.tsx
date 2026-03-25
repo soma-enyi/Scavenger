@@ -1,10 +1,6 @@
-import { AppShell } from '@components/layout/AppShell'
-import { HomePage } from '@pages/HomePage'
+import { RouterProvider } from 'react-router-dom'
+import { router } from '@/router'
 
 export function App() {
-  return (
-    <AppShell>
-      <HomePage />
-    </AppShell>
-  )
+  return <RouterProvider router={router} />
 }

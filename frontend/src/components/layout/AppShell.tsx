@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { PropsWithChildren } from 'react'
+import { NavLink } from 'react-router-dom'
 import { Menu, X, Wallet, LogOut, Recycle } from 'lucide-react'
 import { useWallet } from '@/context/WalletContext'
 import { useAuth } from '@/context/AuthContext'
@@ -34,14 +35,19 @@ export function AppShell({ children }: PropsWithChildren) {
         <span className="text-lg font-bold">Scavngr</span>
       </div>
       {links.map((link) => (
-        <a
+        <NavLink
           key={link.href}
-          href={link.href}
+          to={link.href}
           onClick={() => setSidebarOpen(false)}
-          className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          className={({ isActive }) =>
+            cn(
+              'rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+              isActive ? 'bg-accent text-accent-foreground' : 'text-foreground'
+            )
+          }
         >
           {link.label}
-        </a>
+        </NavLink>
       ))}
       {user && (
         <button
