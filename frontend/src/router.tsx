@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext'
 import { AppShell } from '@/components/layout/AppShell'
 import { HomePage } from '@/pages/HomePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { IncentivesPage } from '@/pages/IncentivesPage'
 
 function ProtectedLayout() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -32,7 +33,7 @@ export const router = createBrowserRouter([
     children: [
       { path: 'submit', element: <div>Submit Waste</div> },
       { path: 'collect', element: <div>Collect</div> },
-      { path: 'incentives', element: <div>Incentives</div> },
+      { path: 'incentives', element: <IncentivesPage /> },
       { path: 'transfer', element: <div>Transfer</div> },
       { path: 'history', element: <div>History</div> },
     ],
