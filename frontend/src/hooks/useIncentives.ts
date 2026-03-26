@@ -1,9 +1,13 @@
+import { useQuery } from '@tanstack/react-query'
+import { Incentive, WasteType } from '@/api/types'
+import { useContract } from '@/context/ContractContext'
+import { networkConfig } from '@/lib/stellar'
 import { useState, useEffect, useCallback } from 'react'
 import { useWallet } from '@/context/WalletContext'
-import { useContract } from '@/context/ContractContext'
 import { ScavengerClient } from '@/api/client'
-import { Incentive, WasteType } from '@/api/types'
 import { getNetworkPassphrase } from '@/lib/stellar'
+
+const INCENTIVES_STALE_TIME = 30 * 1000 // 30 seconds
 
 const ALL_WASTE_TYPES = [
   WasteType.Paper,
@@ -13,14 +17,29 @@ const ALL_WASTE_TYPES = [
   WasteType.Glass,
 ]
 
-export function useIncentives() {
-  const { address } = useWallet()
-  const { config } = useContract()
-  const [incentives, setIncentives] = useState<Incentive[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const client = new ScavengerClient({
+export function useIncentives(wasteType?: WasteType) {
+  const { config } = useContract()
+
+  const { data, isLoading, isError } = useQuery<Incentive[]>({
+    queryKey: ['incentives', wasteType ?? 'all'],
+    queryFn: async () => {
+      const client = new ScavengerClient({
+        rpcUrl: config.rpcUrl,
+        networkPassphrase: networkConfig.networkPassphrase,
+        contractId: config.contractId,
+      })
+
+      if (wasteType !== undefined) {
+        return client.getIncentives(wasteType)
+      }
+
+      return client.getAllActiveIncentives()
+    },
+    staleTime: INCENTIVES_STALE_TIME,
+  })
+  
+    const client = new ScavengerClient({
     rpcUrl: config.rpcUrl,
     networkPassphrase: getNetworkPassphrase(config.network),
     contractId: config.contractId,
@@ -72,5 +91,9 @@ export function useIncentives() {
     [address, config, load]
   )
 
-  return { incentives, isLoading, error, address, createIncentive, updateIncentive, deactivateIncentive }
+  return {
+    incentives: data ?? [],
+    isLoading,
+    isError, isLoading, error, address, createIncentive, updateIncentive, deactivateIncentive
+  }
 }
