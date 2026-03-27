@@ -19,13 +19,13 @@ const ALL_WASTE_TYPES = [
 
 function WasteRow({ material, onTransfer }: { material: Material; onTransfer: (id: number) => void }) {
   return (
-    <div className="flex items-center justify-between rounded-md border px-4 py-3 text-sm">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-3 rounded-md border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <Badge variant="secondary">{wasteTypeLabel(material.waste_type)}</Badge>
         <span className="text-muted-foreground">ID #{material.id}</span>
         <span>{material.weight.toLocaleString()} g</span>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 sm:justify-start">
         <span className="text-xs text-muted-foreground">{formatDate(material.submitted_at)}</span>
         <Button size="sm" variant="outline" onClick={() => onTransfer(material.id)}>
           Transfer
@@ -82,7 +82,7 @@ export function CollectorDashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       <div>
         <h1 className="text-2xl font-bold">Collector Dashboard</h1>
         <p className="text-sm text-muted-foreground">{formatAddress(address)}</p>

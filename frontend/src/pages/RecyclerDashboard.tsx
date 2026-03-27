@@ -76,8 +76,8 @@ export function RecyclerDashboard() {
   useEffect(() => { load() }, [load])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 overflow-x-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <Button onClick={() => setModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
@@ -152,7 +152,7 @@ export function RecyclerDashboard() {
           ) : (
             <div className="divide-y">
               {wastes.map((m) => (
-                <div key={m.id} className="flex items-center justify-between py-3">
+                <div key={m.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium">
                       #{m.id} · {WASTE_LABELS[m.waste_type]}
@@ -194,7 +194,7 @@ export function RecyclerDashboard() {
           ) : (
             <div className="divide-y">
               {incentives.map((inc) => (
-                <div key={inc.id} className="flex items-center justify-between py-3">
+                <div key={inc.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium">{WASTE_LABELS[inc.waste_type]}</p>
                     <p className="text-xs text-muted-foreground">

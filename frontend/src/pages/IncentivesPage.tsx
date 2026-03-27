@@ -106,12 +106,12 @@ export function IncentivesPage() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Incentives</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-full sm:w-36">
               <SelectValue placeholder="All types" />
             </SelectTrigger>
             <SelectContent>

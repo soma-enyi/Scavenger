@@ -124,7 +124,7 @@ export function LandingPage() {
                 href={href}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                className="flex min-h-11 items-center gap-1.5 px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
                 {label}
               </a>

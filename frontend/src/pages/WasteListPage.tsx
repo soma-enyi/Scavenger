@@ -98,12 +98,12 @@ export function WasteListPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-x-hidden">
       <h1 className="text-2xl font-bold">My Wastes</h1>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="relative w-40">
+        <div className="relative w-full sm:w-40">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
@@ -117,7 +117,7 @@ export function WasteListPage() {
         </div>
 
         <Select value={typeFilter} onValueChange={handleFilterChange(setTypeFilter)}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-full sm:w-36">
             <SelectValue placeholder="Waste type" />
           </SelectTrigger>
           <SelectContent>
@@ -131,7 +131,7 @@ export function WasteListPage() {
         </Select>
 
         <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-full sm:w-36">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -250,7 +250,7 @@ export function WasteListPage() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <span>
               {filtered.length} waste{filtered.length !== 1 ? 's' : ''}
             </span>

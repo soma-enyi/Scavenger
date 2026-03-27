@@ -1,21 +1,20 @@
-import { useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Menu, X, Wallet, LogOut, Recycle } from 'lucide-react'
+import { Home, Package, PlusCircle, Truck, Factory, Gift, ArrowRightLeft, History, Wallet, LogOut, Recycle } from 'lucide-react'
 import { useWallet } from '@/context/WalletContext'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
 const NAV_LINKS = [
-  { label: 'Dashboard', href: '/', roles: ['Recycler', 'Collector', 'Manufacturer'] },
-  { label: 'My Wastes', href: '/wastes', roles: ['Recycler', 'Collector', 'Manufacturer'] },
-  { label: 'Submit Waste', href: '/submit', roles: ['Recycler'] },
-  { label: 'Collect', href: '/collect', roles: ['Collector'] },
-  { label: 'My Dashboard', href: '/manufacturer', roles: ['Manufacturer'] },
-  { label: 'Incentives', href: '/incentives', roles: ['Manufacturer'] },
-  { label: 'Transfer', href: '/transfer', roles: ['Recycler', 'Collector'] },
-  { label: 'History', href: '/history', roles: ['Recycler', 'Collector', 'Manufacturer'] }
+  { label: 'Dashboard', href: '/dashboard', roles: ['Recycler', 'Collector', 'Manufacturer'], icon: Home },
+  { label: 'My Wastes', href: '/wastes', roles: ['Recycler', 'Collector', 'Manufacturer'], icon: Package },
+  { label: 'Submit Waste', href: '/submit', roles: ['Recycler'], icon: PlusCircle },
+  { label: 'Collect', href: '/collect', roles: ['Collector'], icon: Truck },
+  { label: 'My Dashboard', href: '/manufacturer', roles: ['Manufacturer'], icon: Factory },
+  { label: 'Incentives', href: '/incentives', roles: ['Manufacturer'], icon: Gift },
+  { label: 'Transfer', href: '/transfer', roles: ['Recycler', 'Collector'], icon: ArrowRightLeft },
+  { label: 'History', href: '/history', roles: ['Recycler', 'Collector', 'Manufacturer'], icon: History },
 ]
 
 function truncate(addr: string) {
@@ -23,7 +22,6 @@ function truncate(addr: string) {
 }
 
 export function AppShell({ children }: PropsWithChildren) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const { address, isConnected, connect, disconnect, isLoading } = useWallet()
   const { user, logout } = useAuth()
 
@@ -40,10 +38,9 @@ export function AppShell({ children }: PropsWithChildren) {
         <NavLink
           key={link.href}
           to={link.href}
-          onClick={() => setSidebarOpen(false)}
           className={({ isActive }) =>
             cn(
-              'rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+              'flex min-h-11 items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
               isActive ? 'bg-accent text-accent-foreground' : 'text-foreground'
             )
           }
@@ -55,9 +52,8 @@ export function AppShell({ children }: PropsWithChildren) {
         <button
           onClick={() => {
             logout()
-            setSidebarOpen(false)
           }}
-          className="mt-auto flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-accent"
+          className="mt-auto flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-accent"
         >
           <LogOut className="h-4 w-4" />
           Sign out
@@ -71,38 +67,15 @@ export function AppShell({ children }: PropsWithChildren) {
       {/* Desktop sidebar */}
       <aside className="hidden w-56 shrink-0 border-r md:flex md:flex-col">{Sidebar}</aside>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 flex md:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative z-50 w-56 bg-background shadow-xl">
-            <button
-              className="absolute right-3 top-3 rounded-sm p-1 hover:bg-accent"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </button>
-            {Sidebar}
-          </aside>
-        </div>
-      )}
-
       <div className="flex flex-1 flex-col">
         {/* Header */}
         <header className="flex h-14 items-center justify-between border-b px-4">
-          <button
-            className="rounded-md p-1 hover:bg-accent md:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-
           <span className="text-sm font-medium md:hidden">Scavngr</span>
 
           <div className="ml-auto flex items-center gap-3">
             {isConnected && address ? (
               <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium">
+                <span className="hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium sm:flex">
                   <Wallet className="h-3.5 w-3.5 text-primary" />
                   {truncate(address)}
                 </span>
@@ -119,8 +92,32 @@ export function AppShell({ children }: PropsWithChildren) {
         </header>
 
         {/* Page content */}
-        <main className={cn('flex-1 p-6')}>{children}</main>
+        <main className={cn('flex-1 p-4 pb-24 sm:p-6 sm:pb-6')}>{children}</main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
+        <div className="flex min-h-16 items-center gap-1 overflow-x-auto px-2 py-1">
+          {links.map((link) => {
+            const Icon = link.icon
+            return (
+              <NavLink
+                key={link.href}
+                to={link.href}
+                className={({ isActive }) =>
+                  cn(
+                    'flex min-h-11 min-w-[4.5rem] flex-col items-center justify-center rounded-md px-3 py-1 text-[11px] font-medium',
+                    isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
+                  )
+                }
+              >
+                <Icon className="mb-0.5 h-4 w-4" />
+                {link.label}
+              </NavLink>
+            )
+          })}
+        </div>
+      </nav>
     </div>
   )
 }
