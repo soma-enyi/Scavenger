@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Recycle, Truck, Factory } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useSupplyChainStats } from '@/hooks/useSupplyChainStats'
 import { useAppTitle } from '@/hooks/useAppTitle'
 
@@ -39,9 +40,12 @@ export function LandingPage() {
           <Recycle className="h-5 w-5 text-primary" />
           Scavngr
         </div>
-        <Button asChild size="sm">
-          <Link to="/dashboard">Launch App</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button asChild size="sm">
+            <Link to="/dashboard">Launch App</Link>
+          </Button>
+        </div>
       </header>
 
       <main className="flex-1">

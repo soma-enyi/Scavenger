@@ -4,6 +4,7 @@ import { Home, Package, PlusCircle, Truck, Factory, Gift, ArrowRightLeft, Histor
 import { useWallet } from '@/context/WalletContext'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { cn } from '@/lib/utils'
 
 const NAV_LINKS = [
@@ -73,6 +74,8 @@ export function AppShell({ children }: PropsWithChildren) {
           <span className="text-sm font-medium md:hidden">Scavngr</span>
 
           <div className="ml-auto flex items-center gap-3">
+            <ThemeToggle className="shrink-0" />
+
             {isConnected && address ? (
               <div className="flex items-center gap-2">
                 <span className="hidden items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium sm:flex">

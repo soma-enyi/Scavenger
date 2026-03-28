@@ -7,7 +7,7 @@ import { App } from '@/App'
 import { AuthProvider } from '@/context/AuthContext'
 import { WalletProvider } from '@/context/WalletContext'
 import { ContractProvider } from '@/context/ContractContext'
-import { ThemeProvider } from '@/context/ThemeProvider'
+import { ThemeProvider, useTheme } from '@/context/ThemeProvider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { getErrorMessage } from '@/lib/contractErrors'
 import './index.css'
@@ -29,16 +29,22 @@ const queryClient = new QueryClient({
   }
 })
 
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme()
+
+  return <Toaster position="top-right" richColors closeButton theme={resolvedTheme} />
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider>
         <ErrorBoundary>
           <AuthProvider>
             <WalletProvider>
               <ContractProvider>
                 <App />
-                <Toaster position="top-right" richColors closeButton />
+                <ThemedToaster />
               </ContractProvider>
             </WalletProvider>
           </AuthProvider>

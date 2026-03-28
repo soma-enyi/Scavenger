@@ -28,7 +28,7 @@ const WASTE_TYPES: { value: WasteType; label: string; icon: React.ReactNode; col
   { value: WasteType.Paper,      label: 'Paper',       icon: <Newspaper  className="h-4 w-4" />, color: 'text-yellow-600' },
   { value: WasteType.PetPlastic, label: 'PET Plastic', icon: <Recycle    className="h-4 w-4" />, color: 'text-blue-600'   },
   { value: WasteType.Plastic,    label: 'Plastic',     icon: <Package    className="h-4 w-4" />, color: 'text-purple-600' },
-  { value: WasteType.Metal,      label: 'Metal',       icon: <Wrench     className="h-4 w-4" />, color: 'text-slate-600'  },
+  { value: WasteType.Metal,      label: 'Metal',       icon: <Wrench     className="h-4 w-4" />, color: 'text-slate-600 dark:text-slate-400'  },
   { value: WasteType.Glass,      label: 'Glass',       icon: <GlassWater className="h-4 w-4" />, color: 'text-cyan-600'   },
 ]
 

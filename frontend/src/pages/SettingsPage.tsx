@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useTheme } from 'next-themes'
 import { Copy, Check, LogOut, Sun, Moon, Monitor } from 'lucide-react'
 import { useWallet } from '@/context/WalletContext'
 import { useContract } from '@/context/ContractContext'
 import { useAuth } from '@/context/AuthContext'
+import { useTheme } from '@/context/ThemeProvider'
 import { NETWORK_CONFIGS } from '@/lib/stellar'
 import { Button } from '@/components/ui/Button'
 import { Switch } from '@/components/ui/Switch'
@@ -45,7 +45,7 @@ export function SettingsPage() {
   const { address, disconnect } = useWallet()
   const { logout } = useAuth()
   const { config, updateConfig } = useContract()
-  const { theme, setTheme } = useTheme()
+  const { theme, isDark, isReady, setTheme } = useTheme()
 
   const [copied, setCopied] = useState(false)
 
@@ -66,8 +66,6 @@ export function SettingsPage() {
     const netCfg = NETWORK_CONFIGS[network]
     updateConfig({ network, rpcUrl: netCfg.rpcUrl })
   }
-
-  const isDark = theme === 'dark'
 
   return (
     <div className="mx-auto max-w-xl space-y-8 px-4 py-8">
@@ -120,7 +118,7 @@ export function SettingsPage() {
           <div className="flex items-center gap-2">
             <Sun className="h-4 w-4 text-muted-foreground" />
             <Switch
-              checked={isDark}
+              checked={isReady && isDark}
               onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
               aria-label="Toggle dark mode"
             />
