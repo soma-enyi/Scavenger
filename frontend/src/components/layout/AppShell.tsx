@@ -13,7 +13,7 @@ const NAV_LINKS = [
   { label: 'Submit Waste', href: '/submit', roles: ['Recycler'], icon: PlusCircle },
   { label: 'Collect', href: '/collect', roles: ['Collector'], icon: Truck },
   { label: 'My Dashboard', href: '/manufacturer', roles: ['Manufacturer'], icon: Factory },
-  { label: 'Incentives', href: '/incentives', roles: ['Manufacturer'], icon: Gift },
+  { label: 'Incentives', href: '/incentives', roles: ['Recycler', 'Collector', 'Manufacturer'], icon: Gift },
   { label: 'Transfer', href: '/transfer', roles: ['Recycler', 'Collector'], icon: ArrowRightLeft },
   { label: 'History', href: '/history', roles: ['Recycler', 'Collector', 'Manufacturer'], icon: History },
 ]
