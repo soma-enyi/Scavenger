@@ -20,6 +20,7 @@ const SettingsPage              = lazy(() => import('@/pages/SettingsPage').then
 const RewardsPage               = lazy(() => import('@/pages/RewardsPage').then((m) => ({ default: m.RewardsPage })))
 const SupplyChainTrackerPage    = lazy(() => import('@/pages/SupplyChainTrackerPage').then((m) => ({ default: m.SupplyChainTrackerPage })))
 
+// eslint-disable-next-line react-refresh/only-export-components
 function PageFallback() {
   return (
     <Suspense fallback={<PageSkeleton />}>
@@ -28,6 +29,7 @@ function PageFallback() {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 function ProtectedLayout() {
   const { isAuthenticated, isLoading } = useAuth()
   if (isLoading) return null

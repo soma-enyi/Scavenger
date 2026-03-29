@@ -48,8 +48,8 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const addr = await requestAccess();
       setAddress(addr);
       localStorage.setItem('wallet_address', addr);
-    } catch (err: any) {
-      const msg = err?.message ?? '';
+    } catch (err: unknown) {
+      const msg = (err instanceof Error ? err.message : String(err)) ?? '';
       setError(msg.includes('User declined') ? 'Connection rejected.' : 'Failed to connect wallet.');
     } finally {
       setLoading(false)

@@ -231,13 +231,13 @@ export function RecyclerDashboard() {
         onSuccess={() => { setModalOpen(false); load() }}
       />
 
-      {transferWasteId !== null && (
-        <TransferWasteModal
-          open
-          wasteId={transferWasteId}
-          onClose={() => { setTransferWasteId(null); load() }}
-        />
-      )}
+      <TransferWasteModal
+        open={transferWasteId !== null}
+        waste={transferWasteId !== null
+          ? (wastes.find((w) => BigInt(w.id) === transferWasteId) as unknown as import('@/api/types').Waste ?? null)
+          : null}
+        onClose={() => { setTransferWasteId(null); load() }}
+      />
     </div>
   )
 }

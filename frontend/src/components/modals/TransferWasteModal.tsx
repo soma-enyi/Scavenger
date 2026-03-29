@@ -31,17 +31,6 @@ const VALID_RECIPIENT_ROLES: Record<Role, Role[]> = {
   [Role.Manufacturer]:  [],
 }
 
-function validateTransferRoute(senderRole: Role, recipientRole: Role): string | null {
-  const allowed = VALID_RECIPIENT_ROLES[senderRole]
-  if (!allowed || allowed.length === 0) {
-    return `${senderRole}s cannot transfer waste.`
-  }
-  if (!allowed.includes(recipientRole)) {
-    return `${senderRole} cannot transfer to a ${recipientRole}. Allowed: ${allowed.join(', ')}.`
-  }
-  return null
-}
-
 // Stellar public key: 56 chars, starts with G
 const STELLAR_ADDRESS_RE = /^G[A-Z2-7]{55}$/
 

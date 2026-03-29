@@ -77,10 +77,6 @@ export function IncentivesPage() {
     setCreateOpen(true)
   }, [])
 
-  const handleDeactivate = useCallback((inc: Incentive) => {
-    deactivateIncentive(inc.id)
-  }, [deactivateIncentive])
-
   const handleSubmit = async () => {
     setSubmitting(true)
     try {

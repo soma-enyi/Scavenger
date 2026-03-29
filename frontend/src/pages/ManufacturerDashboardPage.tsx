@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react'
-import { Plus, PackageCheck, Zap, History, Loader2 } from 'lucide-react'
+import { Plus, PackageCheck, Zap, History, Loader2, Gift } from 'lucide-react'
 import { useManufacturerDashboard } from '@/hooks/useManufacturerDashboard'
-import { WasteType } from '@/api/types'
+import { useDistributeRewards } from '@/hooks/useDistributeRewards'
+import { WasteType, Incentive, Material } from '@/api/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -30,11 +31,112 @@ const WASTE_TYPE_LABELS: Record<WasteType, string> = {
   [WasteType.Glass]: 'Glass',
 }
 
+// ── Distribute Rewards Dialog ─────────────────────────────────────────────────
+
+function DistributeRewardsDialog({
+  waste,
+  incentives,
+  onClose,
+}: {
+  waste: Material
+  incentives: Incentive[]
+  onClose: () => void
+}) {
+  const matchingIncentives = incentives.filter((i) => i.waste_type === waste.waste_type)
+  const [selectedIncentiveId, setSelectedIncentiveId] = useState(
+    matchingIncentives[0]?.id ? String(matchingIncentives[0].id) : ''
+  )
+  const distribute = useDistributeRewards()
+
+  const selectedIncentive = matchingIncentives.find((i) => String(i.id) === selectedIncentiveId)
+  // Estimated reward = reward_points * weight (simplified preview)
+  const estimatedTotal = selectedIncentive
+    ? BigInt(selectedIncentive.reward_points) * BigInt(waste.weight)
+    : 0n
+
+  const handleDistribute = async () => {
+    if (!selectedIncentiveId) return
+    await distribute.mutateAsync({
+      wasteId: BigInt(waste.id),
+      incentiveId: BigInt(selectedIncentiveId),
+    })
+    onClose()
+  }
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Distribute Rewards — Waste #{waste.id}</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4 py-2">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+          <dt className="text-muted-foreground">Type</dt>
+          <dd>{WASTE_TYPE_LABELS[waste.waste_type]}</dd>
+          <dt className="text-muted-foreground">Weight</dt>
+          <dd>{waste.weight} kg</dd>
+        </dl>
+
+        {matchingIncentives.length === 0 ? (
+          <p className="text-sm text-destructive">No active incentives for this waste type.</p>
+        ) : (
+          <>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Select Incentive</label>
+              <Select value={selectedIncentiveId} onValueChange={setSelectedIncentiveId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose incentive" />
+                </SelectTrigger>
+                <SelectContent>
+                  {matchingIncentives.map((inc) => (
+                    <SelectItem key={inc.id} value={String(inc.id)}>
+                      #{inc.id} — {inc.reward_points} pts/unit (budget: {inc.remaining_budget.toLocaleString()})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedIncentive && (
+              <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
+                <p className="font-medium">Estimated Reward Breakdown</p>
+                <p className="text-muted-foreground">
+                  {selectedIncentive.reward_points} pts × {waste.weight} kg ={' '}
+                  <span className="font-semibold text-foreground">
+                    ~{estimatedTotal.toLocaleString()} tokens
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Actual split is determined by on-chain percentages (collector + owner shares).
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleDistribute}
+          disabled={distribute.isPending || !selectedIncentiveId || matchingIncentives.length === 0}
+        >
+          {distribute.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Distribute
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export function ManufacturerDashboardPage() {
   const { pendingWastes, incentives, rewardHistory, isLoading, error, createIncentive, confirmWaste } =
     useManufacturerDashboard()
 
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [distributeTarget, setDistributeTarget] = useState<Material | null>(null)
   const [form, setForm] = useState({ wasteType: String(WasteType.Paper), rewardPoints: '', budget: '' })
   const [submitting, setSubmitting] = useState(false)
 
@@ -46,7 +148,7 @@ export function ManufacturerDashboardPage() {
         BigInt(form.rewardPoints),
         BigInt(form.budget)
       )
-      setDialogOpen(false)
+      setCreateDialogOpen(false)
       setForm({ wasteType: String(WasteType.Paper), rewardPoints: '', budget: '' })
     } finally {
       setSubmitting(false)
@@ -57,7 +159,7 @@ export function ManufacturerDashboardPage() {
     <div className="space-y-6 overflow-x-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Manufacturer Dashboard</h1>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Create Incentive
         </Button>
@@ -102,9 +204,19 @@ export function ManufacturerDashboardPage() {
                         </p>
                         <p className="text-xs text-muted-foreground">ID #{w.id}</p>
                       </div>
-                      <Button size="sm" variant="outline" onClick={() => confirmWaste(w.id)}>
-                        Confirm
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => confirmWaste(w.id)}>
+                          Confirm
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          title="Distribute rewards"
+                          onClick={() => setDistributeTarget(w)}
+                        >
+                          <Gift className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -124,7 +236,7 @@ export function ManufacturerDashboardPage() {
                   icon={Zap}
                   title="No active incentives"
                   description="Incentives will appear here once created"
-                  action={{ label: "Create Incentive", onClick: () => setDialogOpen(true) }}
+                  action={{ label: 'Create Incentive', onClick: () => setCreateDialogOpen(true) }}
                 />
               ) : (
                 <ul className="space-y-3">
@@ -184,7 +296,7 @@ export function ManufacturerDashboardPage() {
       )}
 
       {/* Create Incentive Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Incentive</DialogTitle>
@@ -235,7 +347,7 @@ export function ManufacturerDashboardPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -247,6 +359,17 @@ export function ManufacturerDashboardPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
+      </Dialog>
+
+      {/* Distribute Rewards Dialog */}
+      <Dialog open={!!distributeTarget} onOpenChange={(o) => !o && setDistributeTarget(null)}>
+        {distributeTarget && (
+          <DistributeRewardsDialog
+            waste={distributeTarget}
+            incentives={incentives}
+            onClose={() => setDistributeTarget(null)}
+          />
+        )}
       </Dialog>
     </div>
   )

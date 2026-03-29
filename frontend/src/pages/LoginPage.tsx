@@ -64,7 +64,7 @@ export function LoginPage() {
       })
       .catch(() => setIsRegistered(false))
       .finally(() => setChecking(false))
-  }, [address])
+  }, [address, login, navigate])
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()

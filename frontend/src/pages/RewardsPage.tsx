@@ -1,38 +1,85 @@
 import { useState } from 'react'
-import { Coins, Recycle, ArrowRightLeft, Heart, Package } from 'lucide-react'
+import { Coins, Recycle, ArrowRightLeft, Heart, Package, Loader2 } from 'lucide-react'
 import { useRewards } from '@/hooks/useRewards'
 import { useWallet } from '@/context/WalletContext'
+import { useDonateToCharity } from '@/hooks/useDonateToCharity'
 import { Role } from '@/api/types'
 import { wasteTypeLabel, formatDate } from '@/lib/helpers'
 import { StatCard } from '@/components/ui/StatCard'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/Dialog'
 import { useAppTitle } from '@/hooks/useAppTitle'
 
-// ── Donate dialog (simple confirm) ───────────────────────────────────────────
+// ── Donate dialog ─────────────────────────────────────────────────────────────
 
-function DonateButton() {
-  const [donated, setDonated] = useState(false)
+function DonateButton({ balance }: { balance: bigint }) {
+  const [open, setOpen] = useState(false)
+  const [amount, setAmount] = useState('')
+  const donate = useDonateToCharity()
 
-  if (donated) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-        <Heart className="h-4 w-4 fill-current" />
-        Donation submitted — thank you!
-      </div>
-    )
+  const parsed = amount ? BigInt(amount) : 0n
+  const isInvalid = parsed <= 0n || parsed > balance
+
+  const handleDonate = async () => {
+    await donate.mutateAsync({ amount: parsed, balance })
+    setOpen(false)
+    setAmount('')
   }
 
   return (
-    <Button
-      variant="outline"
-      onClick={() => setDonated(true)}
-      className="gap-2"
-    >
-      <Heart className="h-4 w-4" />
-      Donate to Charity
-    </Button>
+    <>
+      <Button variant="outline" onClick={() => setOpen(true)} className="gap-2">
+        <Heart className="h-4 w-4" />
+        Donate to Charity
+      </Button>
+
+      <Dialog open={open} onOpenChange={(o) => !o && setOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Donate to Charity</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Available balance: <span className="font-medium text-foreground">{balance.toLocaleString()} tokens</span>
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Amount to donate</label>
+              <Input
+                type="number"
+                min="1"
+                max={balance.toString()}
+                placeholder="e.g. 100"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              {amount && isInvalid && (
+                <p className="text-xs text-destructive">
+                  {parsed <= 0n ? 'Amount must be greater than zero.' : 'Amount exceeds your balance.'}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleDonate} disabled={donate.isPending || !amount || isInvalid}>
+              {donate.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Donate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -55,8 +102,6 @@ export function RewardsPage() {
   const materialsSubmitted = stats?.materials_submitted ?? 0
   const transfersCount = stats?.transfers_count ?? 0
 
-  // Earnings breakdown: split total_earned proportionally by activity counts
-  // Recyclers earn from submissions; Collectors earn from transfers
   const totalActivity = materialsSubmitted + transfersCount || 1
   const recyclingEarned = role === Role.Recycler
     ? totalEarned
@@ -72,7 +117,7 @@ export function RewardsPage() {
           <h1 className="text-2xl font-bold">Rewards</h1>
           <p className="mt-1 text-sm text-muted-foreground">Your token balance and earning history.</p>
         </div>
-        <DonateButton />
+        <DonateButton balance={totalEarned} />
       </div>
 
       {/* Balance + breakdown */}
