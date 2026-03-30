@@ -107,10 +107,10 @@ export function IncentivesPage() {
   )
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Incentives</h1>
-        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+    <div className="space-y-6 overflow-x-hidden px-4 py-6 sm:px-0 sm:py-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold sm:text-2xl">Incentives</h1>
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
           <label htmlFor="incentive-type-filter" className="sr-only">
             Filter incentives by waste type
           </label>
@@ -128,7 +128,7 @@ export function IncentivesPage() {
             </SelectContent>
           </Select>
           {isManufacturer && (
-            <Button onClick={openCreate}>
+            <Button onClick={openCreate} className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Create Incentive
             </Button>
@@ -171,8 +171,12 @@ export function IncentivesPage() {
             <EmptyState
               icon={Zap}
               title="No incentives found"
-              description={typeFilter !== 'all' ? "No incentives for this waste type" : "No incentives yet"}
-              action={isManufacturer ? { label: "Create Incentive", onClick: openCreate } : undefined}
+              description={
+                typeFilter !== 'all' ? 'No incentives for this waste type' : 'No incentives yet'
+              }
+              action={
+                isManufacturer ? { label: 'Create Incentive', onClick: openCreate } : undefined
+              }
             />
           ) : (
             <>

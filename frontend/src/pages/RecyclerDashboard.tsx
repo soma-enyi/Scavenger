@@ -17,7 +17,7 @@ import { networkConfig } from '@/lib/stellar'
 const client = new ScavengerClient({
   rpcUrl: networkConfig.rpcUrl,
   networkPassphrase: networkConfig.networkPassphrase,
-  contractId: config.contractId,
+  contractId: config.contractId
 })
 
 const WASTE_LABELS: Record<WasteType, string> = {
@@ -25,7 +25,7 @@ const WASTE_LABELS: Record<WasteType, string> = {
   [WasteType.PetPlastic]: 'PET Plastic',
   [WasteType.Plastic]: 'Plastic',
   [WasteType.Metal]: 'Metal',
-  [WasteType.Glass]: 'Glass',
+  [WasteType.Glass]: 'Glass'
 }
 
 function statusVariant(m: Material): 'default' | 'secondary' | 'outline' | 'destructive' {
@@ -61,13 +61,16 @@ export function RecyclerDashboard() {
       const [participantStats, wasteIds, activeIncentives] = await Promise.all([
         client.getStats(address),
         client.getParticipantWastes(address),
-        client.getActiveIncentives(),
+        client.getActiveIncentives()
       ])
       setStats(participantStats)
       setIncentives(activeIncentives.slice(0, 5))
 
       const materials = await Promise.all(
-        wasteIds.slice(-10).reverse().map((id) => client.getMaterial(id))
+        wasteIds
+          .slice(-10)
+          .reverse()
+          .map((id) => client.getMaterial(id))
       )
       setWastes(materials.filter(Boolean) as Material[])
     } finally {
@@ -75,13 +78,15 @@ export function RecyclerDashboard() {
     }
   }, [address])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <Button onClick={() => setModalOpen(true)}>
+    <div className="space-y-6 overflow-x-hidden px-4 py-6 sm:px-0 sm:py-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold sm:text-2xl">Dashboard</h1>
+        <Button onClick={() => setModalOpen(true)} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Register Waste
         </Button>
@@ -95,7 +100,9 @@ export function RecyclerDashboard() {
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Token Balance</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Token Balance
+                </CardTitle>
                 <Coins className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -105,7 +112,9 @@ export function RecyclerDashboard() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Wastes Submitted</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Wastes Submitted
+                </CardTitle>
                 <Recycle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -115,7 +124,9 @@ export function RecyclerDashboard() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Transfers</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Transfers
+                </CardTitle>
                 <Weight className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -149,12 +160,15 @@ export function RecyclerDashboard() {
               icon={Recycle}
               title="No wastes submitted"
               description="Start by submitting your first waste"
-              action={{ label: "Register Waste", onClick: () => setModalOpen(true) }}
+              action={{ label: 'Register Waste', onClick: () => setModalOpen(true) }}
             />
           ) : (
             <div className="divide-y">
               {wastes.map((m) => (
-                <div key={m.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                  key={m.id}
+                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium">
                       #{m.id} · {WASTE_LABELS[m.waste_type]}
@@ -207,7 +221,10 @@ export function RecyclerDashboard() {
           ) : (
             <div className="divide-y">
               {incentives.map((inc) => (
-                <div key={inc.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                  key={inc.id}
+                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium">{WASTE_LABELS[inc.waste_type]}</p>
                     <p className="text-xs text-muted-foreground">
@@ -228,15 +245,25 @@ export function RecyclerDashboard() {
         open={modalOpen}
         address={address}
         onClose={() => setModalOpen(false)}
-        onSuccess={() => { setModalOpen(false); load() }}
+        onSuccess={() => {
+          setModalOpen(false)
+          load()
+        }}
       />
 
       <TransferWasteModal
         open={transferWasteId !== null}
-        waste={transferWasteId !== null
-          ? (wastes.find((w) => BigInt(w.id) === transferWasteId) as unknown as import('@/api/types').Waste ?? null)
-          : null}
-        onClose={() => { setTransferWasteId(null); load() }}
+        waste={
+          transferWasteId !== null
+            ? ((wastes.find(
+                (w) => BigInt(w.id) === transferWasteId
+              ) as unknown as import('@/api/types').Waste) ?? null)
+            : null
+        }
+        onClose={() => {
+          setTransferWasteId(null)
+          load()
+        }}
       />
     </div>
   )

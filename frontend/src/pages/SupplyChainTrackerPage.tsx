@@ -21,27 +21,32 @@ import { cn } from '@/lib/utils'
 type WasteStatus = 'confirmed' | 'pending' | 'inactive'
 
 function resolveStatus(waste: Waste): WasteStatus {
-  if (!waste.is_active)   return 'inactive'
+  if (!waste.is_active) return 'inactive'
   if (waste.is_confirmed) return 'confirmed'
   return 'pending'
 }
 
-const STATUS_CONFIG: Record<WasteStatus, { label: string; icon: React.ReactNode; className: string }> = {
+const STATUS_CONFIG: Record<
+  WasteStatus,
+  { label: string; icon: React.ReactNode; className: string }
+> = {
   confirmed: {
     label: 'Confirmed',
     icon: <CheckCircle2 className="h-3.5 w-3.5" />,
-    className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+    className:
+      'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
   },
   pending: {
     label: 'Pending',
     icon: <Clock className="h-3.5 w-3.5" />,
-    className: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800',
+    className:
+      'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800'
   },
   inactive: {
     label: 'Inactive',
     icon: <XCircle className="h-3.5 w-3.5" />,
-    className: 'bg-muted text-muted-foreground border-border',
-  },
+    className: 'bg-muted text-muted-foreground border-border'
+  }
 }
 
 // ── Waste details hook ────────────────────────────────────────────────────────
@@ -54,13 +59,13 @@ function useWasteById(wasteId: bigint | null) {
       const client = new ScavengerClient({
         rpcUrl: config.rpcUrl,
         networkPassphrase: networkConfig.networkPassphrase,
-        contractId: config.contractId,
+        contractId: config.contractId
       })
       return client.getWaste(wasteId!)
     },
     enabled: wasteId !== null,
     staleTime: 30_000,
-    retry: false,
+    retry: false
   })
 }
 
@@ -107,9 +112,9 @@ export function SupplyChainTrackerPage() {
   const notFound = searchedId !== null && !wasteLoading && (wasteError || waste === null)
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 px-4 py-8">
+    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 sm:space-y-8 sm:py-8">
       <div>
-        <h1 className="text-2xl font-bold">Supply Chain Tracker</h1>
+        <h1 className="text-xl font-bold sm:text-2xl">Supply Chain Tracker</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Enter a waste ID to trace its full journey through the supply chain.
         </p>
@@ -163,14 +168,17 @@ export function SupplyChainTrackerPage() {
           {/* Details card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-              <CardTitle className="text-base">
-                Waste #{waste.waste_id.toString()}
-              </CardTitle>
+              <CardTitle className="text-base">Waste #{waste.waste_id.toString()}</CardTitle>
               {(() => {
                 const status = resolveStatus(waste)
                 const cfg = STATUS_CONFIG[status]
                 return (
-                  <Badge className={cn('inline-flex items-center gap-1 border text-xs font-medium', cfg.className)}>
+                  <Badge
+                    className={cn(
+                      'inline-flex items-center gap-1 border text-xs font-medium',
+                      cfg.className
+                    )}
+                  >
                     {cfg.icon}
                     {cfg.label}
                   </Badge>

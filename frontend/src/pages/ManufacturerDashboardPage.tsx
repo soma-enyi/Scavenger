@@ -13,14 +13,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
+  DialogFooter
 } from '@/components/ui/Dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from '@/components/ui/Select'
 
 const WASTE_TYPE_LABELS: Record<WasteType, string> = {
@@ -28,7 +28,7 @@ const WASTE_TYPE_LABELS: Record<WasteType, string> = {
   [WasteType.PetPlastic]: 'PET Plastic',
   [WasteType.Plastic]: 'Plastic',
   [WasteType.Metal]: 'Metal',
-  [WasteType.Glass]: 'Glass',
+  [WasteType.Glass]: 'Glass'
 }
 
 // ── Distribute Rewards Dialog ─────────────────────────────────────────────────
@@ -36,7 +36,7 @@ const WASTE_TYPE_LABELS: Record<WasteType, string> = {
 function DistributeRewardsDialog({
   waste,
   incentives,
-  onClose,
+  onClose
 }: {
   waste: Material
   incentives: Incentive[]
@@ -58,7 +58,7 @@ function DistributeRewardsDialog({
     if (!selectedIncentiveId) return
     await distribute.mutateAsync({
       wasteId: BigInt(waste.id),
-      incentiveId: BigInt(selectedIncentiveId),
+      incentiveId: BigInt(selectedIncentiveId)
     })
     onClose()
   }
@@ -89,7 +89,8 @@ function DistributeRewardsDialog({
                 <SelectContent>
                   {matchingIncentives.map((inc) => (
                     <SelectItem key={inc.id} value={String(inc.id)}>
-                      #{inc.id} — {inc.reward_points} pts/unit (budget: {inc.remaining_budget.toLocaleString()})
+                      #{inc.id} — {inc.reward_points} pts/unit (budget:{' '}
+                      {inc.remaining_budget.toLocaleString()})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -132,12 +133,23 @@ function DistributeRewardsDialog({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function ManufacturerDashboardPage() {
-  const { pendingWastes, incentives, rewardHistory, isLoading, error, createIncentive, confirmWaste } =
-    useManufacturerDashboard()
+  const {
+    pendingWastes,
+    incentives,
+    rewardHistory,
+    isLoading,
+    error,
+    createIncentive,
+    confirmWaste
+  } = useManufacturerDashboard()
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [distributeTarget, setDistributeTarget] = useState<Material | null>(null)
-  const [form, setForm] = useState({ wasteType: String(WasteType.Paper), rewardPoints: '', budget: '' })
+  const [form, setForm] = useState({
+    wasteType: String(WasteType.Paper),
+    rewardPoints: '',
+    budget: ''
+  })
   const [submitting, setSubmitting] = useState(false)
 
   const handleCreate = useCallback(async () => {
@@ -156,10 +168,10 @@ export function ManufacturerDashboardPage() {
   }, [createIncentive, form])
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Manufacturer Dashboard</h1>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+    <div className="space-y-6 overflow-x-hidden px-4 py-6 sm:px-0 sm:py-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold sm:text-2xl">Manufacturer Dashboard</h1>
+        <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Create Incentive
         </Button>
@@ -176,8 +188,33 @@ export function ManufacturerDashboardPage() {
       )}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-2">
+                  <div className="h-4 w-28 animate-pulse rounded bg-muted" />
+                </CardHeader>
+                <CardContent>
+                  <div className="h-8 w-20 animate-pulse rounded bg-muted" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-3">
+                  <div className="h-5 w-48 animate-pulse rounded bg-muted" />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, j) => (
+                    <div key={j} className="h-16 w-full animate-pulse rounded-md bg-muted" />
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
@@ -197,7 +234,10 @@ export function ManufacturerDashboardPage() {
               ) : (
                 <ul className="space-y-3">
                   {pendingWastes.map((w) => (
-                    <li key={w.id} className="flex items-center justify-between rounded-md border p-3">
+                    <li
+                      key={w.id}
+                      className="flex items-center justify-between rounded-md border p-3"
+                    >
                       <div className="space-y-0.5">
                         <p className="text-sm font-medium">
                           {WASTE_TYPE_LABELS[w.waste_type]} — {w.weight.toString()} kg
@@ -241,7 +281,10 @@ export function ManufacturerDashboardPage() {
               ) : (
                 <ul className="space-y-3">
                   {incentives.map((inc) => (
-                    <li key={inc.id} className="flex items-center justify-between rounded-md border p-3">
+                    <li
+                      key={inc.id}
+                      className="flex items-center justify-between rounded-md border p-3"
+                    >
                       <div className="space-y-0.5">
                         <p className="text-sm font-medium">{WASTE_TYPE_LABELS[inc.waste_type]}</p>
                         <p className="text-xs text-muted-foreground">
@@ -306,7 +349,10 @@ export function ManufacturerDashboardPage() {
               <label htmlFor="manufacturer-waste-type" className="text-sm font-medium">
                 Waste Type
               </label>
-              <Select value={form.wasteType} onValueChange={(v) => setForm((f) => ({ ...f, wasteType: v }))}>
+              <Select
+                value={form.wasteType}
+                onValueChange={(v) => setForm((f) => ({ ...f, wasteType: v }))}
+              >
                 <SelectTrigger id="manufacturer-waste-type" autoFocus>
                   <SelectValue />
                 </SelectTrigger>

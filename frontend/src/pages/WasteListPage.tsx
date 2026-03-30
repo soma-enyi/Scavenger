@@ -111,11 +111,11 @@ export function WasteListPage() {
   }
 
   return (
-    <div className="space-y-4 overflow-x-hidden">
-      <h1 className="text-2xl font-bold">My Wastes</h1>
+    <div className="space-y-4 overflow-x-hidden px-4 py-6 sm:px-0 sm:py-0">
+      <h1 className="text-xl font-bold sm:text-2xl">My Wastes</h1>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <div className="relative w-full sm:w-40">
           <label htmlFor="waste-search-input" className="sr-only">
             Search wastes by ID
@@ -178,7 +178,7 @@ export function WasteListPage() {
 
       {isLoading ? (
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 text-left font-medium">ID</th>
@@ -214,7 +214,7 @@ export function WasteListPage() {
         <>
           {/* Table */}
           <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">ID</th>

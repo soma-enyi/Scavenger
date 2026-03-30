@@ -22,9 +22,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function Row({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
+function Row({
+  label,
+  description,
+  children
+}: {
+  label: string
+  description?: string
+  children: React.ReactNode
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3">
+    <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <p className="text-sm font-medium">{label}</p>
         {description && <p className="text-xs text-muted-foreground">{description}</p>}
@@ -68,18 +76,17 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl space-y-8 px-4 py-8">
+    <div className="mx-auto max-w-xl space-y-6 px-4 py-6 sm:space-y-8 sm:py-8">
       <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage your wallet, appearance, and network.</p>
+        <h1 className="text-xl font-bold sm:text-2xl">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage your wallet, appearance, and network.
+        </p>
       </div>
 
       {/* Wallet */}
       <Section title="Wallet">
-        <Row
-          label="Connected address"
-          description={address ? undefined : 'No wallet connected'}
-        >
+        <Row label="Connected address" description={address ? undefined : 'No wallet connected'}>
           {address ? (
             <div className="flex items-center gap-2">
               <span className="max-w-[160px] truncate font-mono text-xs">{address}</span>
@@ -89,9 +96,11 @@ export function SettingsPage() {
                 aria-label="Copy address"
                 className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                {copied
-                  ? <Check className="h-4 w-4 text-green-500" />
-                  : <Copy className="h-4 w-4" />}
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </button>
               <span role="status" aria-live="polite" className="sr-only">
                 {copied ? 'Address copied to clipboard.' : ''}
@@ -103,12 +112,7 @@ export function SettingsPage() {
         </Row>
 
         <Row label="Disconnect" description="Sign out and disconnect your wallet">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDisconnect}
-            disabled={!address}
-          >
+          <Button variant="destructive" size="sm" onClick={handleDisconnect} disabled={!address}>
             <LogOut className="mr-1.5 h-3.5 w-3.5" />
             Disconnect
           </Button>
@@ -134,6 +138,7 @@ export function SettingsPage() {
             variant={theme === 'system' ? 'secondary' : 'outline'}
             size="sm"
             onClick={() => setTheme('system')}
+            className="w-full sm:w-auto"
           >
             <Monitor className="mr-1.5 h-3.5 w-3.5" />
             Use system
@@ -146,7 +151,8 @@ export function SettingsPage() {
         <div className="px-4 py-3 space-y-2">
           <p className="text-sm font-medium">Stellar network</p>
           <p className="text-xs text-muted-foreground">
-            Changing the network updates the RPC endpoint. Requires a contract deployed on the selected network.
+            Changing the network updates the RPC endpoint. Requires a contract deployed on the
+            selected network.
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {NETWORKS.map((net) => (

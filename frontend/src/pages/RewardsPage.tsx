@@ -15,7 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
+  DialogFooter
 } from '@/components/ui/Dialog'
 import { useAppTitle } from '@/hooks/useAppTitle'
 
@@ -49,7 +49,8 @@ function DonateButton({ balance }: { balance: bigint }) {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Available balance: <span className="font-medium text-foreground">{balance.toLocaleString()} tokens</span>
+              Available balance:{' '}
+              <span className="font-medium text-foreground">{balance.toLocaleString()} tokens</span>
             </p>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Amount to donate</label>
@@ -63,7 +64,9 @@ function DonateButton({ balance }: { balance: bigint }) {
               />
               {amount && isInvalid && (
                 <p className="text-xs text-destructive">
-                  {parsed <= 0n ? 'Amount must be greater than zero.' : 'Amount exceeds your balance.'}
+                  {parsed <= 0n
+                    ? 'Amount must be greater than zero.'
+                    : 'Amount exceeds your balance.'}
                 </p>
               )}
             </div>
@@ -103,19 +106,23 @@ export function RewardsPage() {
   const transfersCount = stats?.transfers_count ?? 0
 
   const totalActivity = materialsSubmitted + transfersCount || 1
-  const recyclingEarned = role === Role.Recycler
-    ? totalEarned
-    : (totalEarned * BigInt(materialsSubmitted)) / BigInt(totalActivity)
-  const collectingEarned = role === Role.Collector
-    ? totalEarned
-    : (totalEarned * BigInt(transfersCount)) / BigInt(totalActivity)
+  const recyclingEarned =
+    role === Role.Recycler
+      ? totalEarned
+      : (totalEarned * BigInt(materialsSubmitted)) / BigInt(totalActivity)
+  const collectingEarned =
+    role === Role.Collector
+      ? totalEarned
+      : (totalEarned * BigInt(transfersCount)) / BigInt(totalActivity)
 
   return (
-    <div className="space-y-8 px-4 py-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 px-4 py-6 sm:space-y-8 sm:py-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Rewards</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Your token balance and earning history.</p>
+          <h1 className="text-xl font-bold sm:text-2xl">Rewards</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your token balance and earning history.
+          </p>
         </div>
         <DonateButton balance={totalEarned} />
       </div>
@@ -175,9 +182,8 @@ export function RewardsPage() {
             <div className="divide-y divide-border">
               {wastes.map((waste) => {
                 const weightNum = Number(waste.weight)
-                const weightStr = weightNum >= 1000
-                  ? `${(weightNum / 1000).toFixed(2)} kg`
-                  : `${weightNum} g`
+                const weightStr =
+                  weightNum >= 1000 ? `${(weightNum / 1000).toFixed(2)} kg` : `${weightNum} g`
 
                 return (
                   <div
@@ -196,7 +202,9 @@ export function RewardsPage() {
                       </p>
                     </div>
                     <Badge
-                      variant={waste.is_confirmed ? 'default' : waste.is_active ? 'secondary' : 'outline'}
+                      variant={
+                        waste.is_confirmed ? 'default' : waste.is_active ? 'secondary' : 'outline'
+                      }
                     >
                       {waste.is_confirmed ? 'Confirmed' : waste.is_active ? 'Active' : 'Inactive'}
                     </Badge>

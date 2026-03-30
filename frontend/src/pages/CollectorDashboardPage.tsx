@@ -15,10 +15,16 @@ const ALL_WASTE_TYPES = [
   WasteType.PetPlastic,
   WasteType.Plastic,
   WasteType.Metal,
-  WasteType.Glass,
+  WasteType.Glass
 ]
 
-function WasteRow({ material, onTransfer }: { material: Material; onTransfer: (id: number) => void }) {
+function WasteRow({
+  material,
+  onTransfer
+}: {
+  material: Material
+  onTransfer: (id: number) => void
+}) {
   return (
     <div className="flex flex-col gap-3 rounded-md border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -48,7 +54,7 @@ export function CollectorDashboardPage() {
     statsByWasteType,
     isLoading,
     error,
-    refetch,
+    refetch
   } = useCollectorDashboard()
 
   const handleTransfer = (wasteId: number) => {
@@ -65,8 +71,30 @@ export function CollectorDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground">
-        Loading dashboard…
+      <div className="space-y-6 overflow-x-hidden">
+        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <div className="h-4 w-28 animate-pulse rounded bg-muted" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-20 animate-pulse rounded bg-muted" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <div className="h-5 w-48 animate-pulse rounded bg-muted" />
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-16 w-full animate-pulse rounded-md bg-muted" />
+            ))}
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -83,10 +111,12 @@ export function CollectorDashboardPage() {
   }
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
-      <div>
-        <h1 className="text-2xl font-bold">Collector Dashboard</h1>
-        <p className="text-sm text-muted-foreground">{formatAddress(address)}</p>
+    <div className="space-y-6 overflow-x-hidden px-4 py-6 sm:px-0 sm:py-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold sm:text-2xl">Collector Dashboard</h1>
+          <p className="text-sm text-muted-foreground">{formatAddress(address)}</p>
+        </div>
       </div>
 
       {/* Stats row */}
