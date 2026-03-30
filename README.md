@@ -193,12 +193,29 @@ cargo watch -x test
 
 ## CI/CD
 
-GitHub Actions automatically:
-- Runs tests on push/PR
-- Checks code formatting
-- Runs clippy linting
-- Builds optimized WASM
-- Uploads build artifacts
+GitHub Actions automatically runs quality checks on all pushes and pull requests:
+
+### Rust Checks
+- Code formatting (`cargo fmt`)
+- Linting with Clippy (`cargo clippy`)
+- Unit and integration tests
+- WASM build verification
+- Security audit with RustSec
+
+### Frontend Checks
+- Code formatting with Prettier
+- ESLint linting (max 0 warnings)
+- TypeScript type checking
+- Production build verification
+- npm security audit
+
+### Branch Protection
+Pull requests must pass all CI checks before merging. Configure branch protection rules:
+1. Go to Settings > Branches
+2. Add rule for `main` branch
+3. Enable "Require status checks to pass before merging"
+4. Select: `Rust Quality Checks`, `Frontend Quality Checks`, `Security Audit`
+5. Enable "Require branches to be up to date before merging"
 
 ## License
 

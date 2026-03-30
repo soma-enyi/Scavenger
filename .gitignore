@@ -41,3 +41,7 @@ out/
 # OS
 Thumbs.db
 .kiro/
+
+# Demo accounts (sensitive)
+demo/demo-accounts.json
+demo/*-secret.txt
