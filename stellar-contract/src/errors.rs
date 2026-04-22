@@ -204,4 +204,7 @@ pub enum Error {
 
     /// (42) Waste is reserved by someone else; transfer is blocked.
     WasteReservedByOther = 42,
+
+    /// (43) starts_at is not before ends_at, or both are in the past.
+    InvalidSchedule = 43,
 }
