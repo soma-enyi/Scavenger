@@ -195,6 +195,20 @@ impl TransferRecord {
     }
 }
 
+/// A single tier in a tiered incentive program.
+/// Reward is `reward_points` per kg for waste weight in [min_weight_kg, max_weight_kg).
+/// `max_weight_kg == 0` means unbounded (no upper limit).
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IncentiveTier {
+    /// Minimum weight in kg (inclusive) for this tier to apply
+    pub min_weight_kg: u64,
+    /// Maximum weight in kg (exclusive); 0 means unbounded
+    pub max_weight_kg: u64,
+    /// Reward points per kg for this tier
+    pub reward_points: u64,
+}
+
 /// Represents an incentive offered by a manufacturer to encourage recycling
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -205,7 +219,7 @@ pub struct Incentive {
     pub rewarder: Address,
     /// Type of waste this incentive targets
     pub waste_type: WasteType,
-    /// Reward points per kilogram
+    /// Reward points per kilogram (used when no tiers are set)
     pub reward_points: u64,
     /// Total points budget allocated for this incentive
     pub total_budget: u64,
@@ -215,6 +229,8 @@ pub struct Incentive {
     pub active: bool,
     /// Timestamp when the incentive was created
     pub created_at: u64,
+    /// Optional tiered reward structure (max 5 tiers, sorted by min_weight_kg asc)
+    pub tiers: soroban_sdk::Vec<IncentiveTier>,
 }
 
 impl Incentive {
@@ -226,6 +242,7 @@ impl Incentive {
         reward_points: u64,
         total_budget: u64,
         created_at: u64,
+        env: &soroban_sdk::Env,
     ) -> Self {
         Self {
             id,
@@ -236,6 +253,7 @@ impl Incentive {
             remaining_budget: total_budget,
             active: true,
             created_at,
+            tiers: soroban_sdk::Vec::new(env),
         }
     }
 
@@ -244,10 +262,24 @@ impl Incentive {
         self.active = false;
     }
 
-    /// Calculates reward for a given weight in grams
+    /// Calculates reward for a given weight in grams.
+    /// Uses tiered rates if tiers are set; falls back to flat `reward_points`.
     pub fn calculate_reward(&self, weight_grams: u64) -> u64 {
-        // Convert grams to kg and multiply by reward points
-        (weight_grams / 1000) * self.reward_points
+        let weight_kg = weight_grams / 1000;
+        if self.tiers.is_empty() {
+            return weight_kg * self.reward_points;
+        }
+        // Find the matching tier (tiers are sorted by min_weight_kg ascending)
+        for i in 0..self.tiers.len() {
+            let tier = self.tiers.get(i).unwrap();
+            let in_lower = weight_kg >= tier.min_weight_kg;
+            let in_upper = tier.max_weight_kg == 0 || weight_kg < tier.max_weight_kg;
+            if in_lower && in_upper {
+                return weight_kg * tier.reward_points;
+            }
+        }
+        // No tier matched — fall back to flat rate
+        weight_kg * self.reward_points
     }
 
     /// Attempts to claim a reward, returns the amount claimed
@@ -279,7 +311,6 @@ impl Incentive {
         }
         let reward = self.calculate_reward(weight_grams);
         reward <= self.remaining_budget
-
     }
 }
 

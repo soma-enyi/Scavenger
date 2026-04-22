@@ -8,8 +8,8 @@ mod test_transfer_path_validation;
 
 pub use errors::Error;
 pub use types::{
-    GlobalMetrics, Incentive, Material, ParticipantRole, RecyclingStats, TransferItemType,
-    TransferRecord, TransferStatus, Waste, WasteTransfer, WasteType,
+    GlobalMetrics, Incentive, IncentiveTier, Material, ParticipantRole, RecyclingStats,
+    TransferItemType, TransferRecord, TransferStatus, Waste, WasteTransfer, WasteType,
 };
 
 use soroban_sdk::{
@@ -1096,12 +1096,8 @@ impl ScavengerContract {
             return 0;
         }
 
-        // Calculate reward: (weight in kg) * reward_points
-        let weight_kg = waste_amount / 1000;
-        let reward = weight_kg * incentive.reward_points;
-        
-        // Exact reward calculation instead of capping
-        reward
+        // Use tiered or flat reward calculation
+        incentive.calculate_reward(waste_amount)
     }
 
     /// Get all active incentives for a specific waste type, sorted by reward descending.
@@ -2599,6 +2595,7 @@ impl ScavengerContract {
             reward_points,
             total_budget,
             env.ledger().timestamp(),
+            &env,
         );
 
         // Store incentive
@@ -2715,6 +2712,88 @@ impl ScavengerContract {
         incentive
     }
 
+    /// Set tiered reward structure for an incentive (max 5 tiers).
+    ///
+    /// Tiers must be sorted by `min_weight_kg` ascending, non-overlapping,
+    /// and contiguous (each tier's `min_weight_kg` must equal the previous
+    /// tier's `max_weight_kg`). Only the original `rewarder` may call this.
+    ///
+    /// # Parameters
+    /// - `incentive_id`: ID of the incentive to update.
+    /// - `rewarder`: Original creator. Must sign.
+    /// - `tiers`: Vec of up to 5 [`IncentiveTier`] entries.
+    ///
+    /// # Returns
+    /// The updated [`Incentive`].
+    ///
+    /// # Errors
+    /// - Panics `"Incentive not found"`.
+    /// - Panics `"Only incentive creator can set tiers"`.
+    /// - Panics `"Incentive is not active"`.
+    /// - Panics `"Maximum 5 tiers allowed"`.
+    /// - Panics `"Tiers cannot be empty"`.
+    /// - Panics `"Tier reward_points must be greater than zero"`.
+    /// - Panics `"Tiers must be sorted by min_weight_kg ascending"`.
+    /// - Panics `"Tier ranges must not overlap"`.
+    /// - Panics `"Last tier must be unbounded (max_weight_kg == 0)"`.
+    pub fn set_incentive_tiers(
+        env: Env,
+        incentive_id: u64,
+        rewarder: Address,
+        tiers: soroban_sdk::Vec<IncentiveTier>,
+    ) -> Incentive {
+        Self::require_not_paused(&env);
+        rewarder.require_auth();
+        Self::require_registered(&env, &rewarder);
+
+        let mut incentive =
+            Self::get_incentive_internal(&env, incentive_id).expect("Incentive not found");
+
+        if incentive.rewarder != rewarder {
+            panic!("Only incentive creator can set tiers");
+        }
+        if !incentive.active {
+            panic!("Incentive is not active");
+        }
+        if tiers.is_empty() {
+            panic!("Tiers cannot be empty");
+        }
+        if tiers.len() > 5 {
+            panic!("Maximum 5 tiers allowed");
+        }
+
+        // Validate each tier and ordering
+        let mut prev_max: u64 = 0;
+        for i in 0..tiers.len() {
+            let tier = tiers.get(i).unwrap();
+            if tier.reward_points == 0 {
+                panic!("Tier reward_points must be greater than zero");
+            }
+            if tier.min_weight_kg < prev_max {
+                panic!("Tier ranges must not overlap");
+            }
+            if tier.min_weight_kg != prev_max {
+                panic!("Tiers must be sorted by min_weight_kg ascending");
+            }
+            // Last tier must be unbounded
+            if i == tiers.len() - 1 && tier.max_weight_kg != 0 {
+                panic!("Last tier must be unbounded (max_weight_kg == 0)");
+            }
+            // Non-last tiers must have max > min
+            if i < tiers.len() - 1 {
+                if tier.max_weight_kg == 0 || tier.max_weight_kg <= tier.min_weight_kg {
+                    panic!("Tier ranges must not overlap");
+                }
+                prev_max = tier.max_weight_kg;
+            }
+        }
+
+        incentive.tiers = tiers;
+        Self::set_incentive(&env, incentive_id, &incentive);
+
+        incentive
+    }
+
     // ========== Global Metrics ==========
 
     /// Get global contract metrics (total waste count and total tokens earned)
@@ -2785,8 +2864,7 @@ impl ScavengerContract {
         assert!(incentive.waste_type == material.waste_type, "Waste type mismatch");
         assert!(incentive.active, "Incentive not active");
 
-        let weight_kg = material.weight / 1000;
-        let total_reward = (incentive.reward_points as i128) * (weight_kg as i128);
+        let total_reward = incentive.calculate_reward(material.weight) as i128;
         assert!(
             (total_reward as u64) <= incentive.remaining_budget,
             "Insufficient incentive budget"
@@ -2794,8 +2872,6 @@ impl ScavengerContract {
 
         let transfers = Self::get_transfer_history(env.clone(), waste_id);
         let cfg = Self::get_reward_config(&env);
-        let collector_pct: u32 = cfg.collector_percentage;
-        let owner_pct: u32 = cfg.owner_percentage;
         let collector_pct = cfg.collector_percentage;
         let owner_pct = cfg.owner_percentage;
 
