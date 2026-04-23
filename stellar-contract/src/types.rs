@@ -1594,34 +1594,30 @@ pub struct SeasonalMultiplier {
     pub end: u64,
 }
 
-/// Status of a waste dispute.
+/// Status of a collection route.
 #[contracttype]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum DisputeStatus {
-    /// Dispute filed, awaiting admin review
+pub enum RouteStatus {
+    /// Route created, not yet started
     Pending = 0,
-    /// Admin resolved in favour of the disputer
-    Resolved = 1,
-    /// Admin rejected the dispute
-    Rejected = 2,
+    /// Route completed by the collector
+    Completed = 1,
+    /// Route cancelled
+    Cancelled = 2,
 }
 
-/// A dispute raised against a waste item.
+/// A collection route grouping nearby waste items for a collector.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Dispute {
-    /// Unique dispute ID
+pub struct CollectionRoute {
+    /// Unique route ID
     pub id: u64,
-    /// The waste item under dispute
-    pub waste_id: u128,
-    /// Address that raised the dispute
-    pub disputer: Address,
-    /// Free-text reason (max 500 chars)
-    pub reason: soroban_sdk::String,
+    /// Collector assigned to this route
+    pub collector: Address,
+    /// Ordered list of v2 waste IDs to collect (max 50)
+    pub waste_ids: soroban_sdk::Vec<u128>,
     /// Current status
-    pub status: DisputeStatus,
-    /// Admin resolution note (empty until resolved/rejected)
-    pub resolution: soroban_sdk::String,
-    /// Ledger timestamp when dispute was created
+    pub status: RouteStatus,
+    /// Ledger timestamp when route was created
     pub created_at: u64,
 }
