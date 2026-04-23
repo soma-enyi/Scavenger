@@ -129,3 +129,16 @@ pub fn emit_contract_paused(env: &Env, admin: &Address) {
 pub fn emit_contract_unpaused(env: &Env, admin: &Address) {
     env.events().publish((symbol_short!("unpaused"),), admin);
 }
+
+/// Emit event when a waste item is split into multiple child items
+pub fn emit_waste_split(
+    env: &Env,
+    parent_id: u128,
+    owner: &Address,
+    child_ids: &soroban_sdk::Vec<u128>,
+) {
+    env.events().publish(
+        (symbol_short!("waste_spl"), parent_id),
+        (owner, child_ids),
+    );
+}

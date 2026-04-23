@@ -2936,4 +2936,146 @@ impl ScavengerContract {
 
         total_reward
     }
+
+    /// Split a v2 waste item into multiple smaller items.
+    ///
+    /// The owner provides a list of weights that must sum to the original weight.
+    /// The original waste is deactivated and new child waste items are created,
+    /// inheriting the type, location, and owner. Transfer history is preserved
+    /// by copying the parent's history to each child. A `WasteSplit` event is emitted.
+    ///
+    /// # Parameters
+    /// - `waste_id`: ID of the v2 waste to split.
+    /// - `owner`: Current owner. Must sign and own the waste.
+    /// - `weights`: Vec of weights (in grams) for each child. Must sum to original weight.
+    ///
+    /// # Returns
+    /// `Vec<u128>` of the newly created child waste IDs.
+    ///
+    /// # Errors
+    /// - [`Error::WasteNotFound`] if no waste record exists for `waste_id`.
+    /// - [`Error::NotWasteOwner`] if `owner` does not own the waste.
+    /// - [`Error::WasteDeactivated`] if the waste is already deactivated.
+    /// - [`Error::TooFewSplits`] if fewer than 2 weights are provided.
+    /// - [`Error::TooManySplits`] if more than 10 weights are provided.
+    /// - [`Error::WeightMismatch`] if the weights do not sum to the original weight.
+    pub fn split_waste(
+        env: Env,
+        waste_id: u128,
+        owner: Address,
+        weights: Vec<u128>,
+    ) -> Result<Vec<u128>, Error> {
+        owner.require_auth();
+        Self::require_not_paused(&env);
+
+        // Load and validate the parent waste
+        let mut parent: types::Waste = match env
+            .storage()
+            .instance()
+            .get(&("waste_v2", waste_id))
+        {
+            Some(w) => w,
+            None => return Err(Error::WasteNotFound),
+        };
+
+        if parent.current_owner != owner {
+            return Err(Error::NotWasteOwner);
+        }
+
+        if !parent.is_active {
+            return Err(Error::WasteDeactivated);
+        }
+
+        let n = weights.len();
+        if n < 2 {
+            return Err(Error::TooFewSplits);
+        }
+        if n > 10 {
+            return Err(Error::TooManySplits);
+        }
+
+        // Validate weights sum equals parent weight
+        let mut total: u128 = 0;
+        for w in weights.iter() {
+            total = total.checked_add(w).ok_or(Error::Overflow)?;
+        }
+        if total != parent.weight {
+            return Err(Error::WeightMismatch);
+        }
+
+        // Load parent transfer history once
+        let parent_history: Vec<WasteTransfer> = env
+            .storage()
+            .instance()
+            .get(&("transfer_history", waste_id))
+            .unwrap_or(Vec::new(&env));
+
+        let timestamp = env.ledger().timestamp();
+        let mut child_ids: Vec<u128> = Vec::new(&env);
+
+        for w in weights.iter() {
+            let child_id = Self::next_waste_id(&env) as u128;
+
+            let child = types::Waste::new(
+                child_id,
+                parent.waste_type,
+                w,
+                owner.clone(),
+                parent.latitude,
+                parent.longitude,
+                timestamp,
+                true,
+                false,
+                owner.clone(),
+            );
+
+            env.storage()
+                .instance()
+                .set(&("waste_v2", child_id), &child);
+
+            // Copy parent transfer history to child
+            env.storage()
+                .instance()
+                .set(&("transfer_history", child_id), &parent_history);
+
+            // Add child to owner's waste list
+            let mut owner_list: Vec<u128> = env
+                .storage()
+                .instance()
+                .get(&("participant_wastes", owner.clone()))
+                .unwrap_or(Vec::new(&env));
+            owner_list.push_back(child_id);
+            env.storage()
+                .instance()
+                .set(&("participant_wastes", owner.clone()), &owner_list);
+
+            child_ids.push_back(child_id);
+        }
+
+        // Deactivate parent
+        parent.deactivate();
+        env.storage()
+            .instance()
+            .set(&("waste_v2", waste_id), &parent);
+
+        // Remove parent from owner's waste list
+        let owner_list: Vec<u128> = env
+            .storage()
+            .instance()
+            .get(&("participant_wastes", owner.clone()))
+            .unwrap_or(Vec::new(&env));
+        let mut new_owner_list = Vec::new(&env);
+        for id in owner_list.iter() {
+            if id != waste_id {
+                new_owner_list.push_back(id);
+            }
+        }
+        env.storage()
+            .instance()
+            .set(&("participant_wastes", owner.clone()), &new_owner_list);
+
+        events::emit_waste_split(&env, waste_id, &owner, &child_ids);
+
+        Ok(child_ids)
+    }
 }

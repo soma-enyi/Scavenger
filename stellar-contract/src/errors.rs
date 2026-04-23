@@ -172,6 +172,14 @@ pub enum Error {
     /// (31) Insufficient budget for the reward.
     InsufficientBudget = 31,
 
+    /// (32) The number of splits exceeds the maximum allowed (10).
+    TooManySplits = 32,
+
+    /// (33) The sum of split weights does not equal the original waste weight.
+    WeightMismatch = 33,
+
+    /// (34) At least two split weights are required.
+    TooFewSplits = 34,
     /// (32) The waste item has expired (TTL elapsed).
     /// Returned by: `transfer_waste_v2`, `batch_transfer_waste`
     WasteExpired = 32,
