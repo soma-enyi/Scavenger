@@ -171,4 +171,8 @@ pub enum Error {
 
     /// (31) Insufficient budget for the reward.
     InsufficientBudget = 31,
+
+    /// (32) The waste item has expired (TTL elapsed).
+    /// Returned by: `transfer_waste_v2`, `batch_transfer_waste`
+    WasteExpired = 32,
 }
