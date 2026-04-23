@@ -207,7 +207,7 @@ pub enum Error {
 
     /// (43) starts_at is not before ends_at, or both are in the past.
     InvalidSchedule = 43,
-    /// (32) The waste item has expired (TTL elapsed).
+    /// (44) The waste item has expired (TTL elapsed).
     /// Returned by: `transfer_waste_v2`, `batch_transfer_waste`
-    WasteExpired = 32,
+    WasteExpired = 44,
 }

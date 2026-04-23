@@ -234,6 +234,8 @@ pub struct Incentive {
     pub starts_at: Option<u64>,
     /// Optional UTC timestamp when the incentive expires
     pub ends_at: Option<u64>,
+    /// Optional tiered reward rates
+    pub tiers: soroban_sdk::Vec<IncentiveTier>,
 }
 
 impl Incentive {
@@ -258,6 +260,7 @@ impl Incentive {
             created_at,
             starts_at: None,
             ends_at: None,
+            tiers: soroban_sdk::Vec::new(env),
         }
     }
 
@@ -613,6 +616,22 @@ pub struct Waste {
     pub image_hash: Option<soroban_sdk::String>,
     /// Supporting document hashes (max 5, each a valid IPFS CID)
     pub document_hashes: soroban_sdk::Vec<soroban_sdk::String>,
+    /// Optional expiry timestamp (0 = no expiry)
+    pub expires_at: u64,
+    /// Reserved by address (for reservation system)
+    pub reserved_by: Option<Address>,
+    /// Reserved until timestamp
+    pub reserved_until: Option<u64>,
+    /// Whether the waste is contaminated
+    pub is_contaminated: bool,
+    /// Contamination level (0-100)
+    pub contamination_level: u32,
+    /// Contamination reason
+    pub contamination_reason: soroban_sdk::String,
+    /// Current processing status
+    pub processing_status: ProcessingStatus,
+    /// Processing history
+    pub processing_history: soroban_sdk::Vec<ProcessingRecord>,
 }
 
 impl Waste {
@@ -654,6 +673,14 @@ impl Waste {
             tags: soroban_sdk::Vec::new(env),
             image_hash: None,
             document_hashes: soroban_sdk::Vec::new(env),
+            expires_at,
+            reserved_by: None,
+            reserved_until: None,
+            is_contaminated: false,
+            contamination_level: 0,
+            contamination_reason: soroban_sdk::String::from_str(env, ""),
+            processing_status: ProcessingStatus::Collected,
+            processing_history: history,
         }
     }
 
@@ -856,6 +883,14 @@ impl WasteBuilder {
             tags: soroban_sdk::Vec::new(env),
             image_hash: None,
             document_hashes: soroban_sdk::Vec::new(env),
+            expires_at: 0,
+            reserved_by: None,
+            reserved_until: None,
+            is_contaminated: false,
+            contamination_level: 0,
+            contamination_reason: soroban_sdk::String::from_str(env, ""),
+            processing_status: ProcessingStatus::Collected,
+            processing_history: history,
         }
     }
 }
@@ -882,6 +917,8 @@ pub struct RecyclingStats {
     pub plastic_count: u64,
     pub metal_count: u64,
     pub glass_count: u64,
+    pub organic_count: u64,
+    pub electronic_count: u64,
     /// Number of wastes graded by this participant per grade
     pub grade_a_count: u64,
     pub grade_b_count: u64,
@@ -904,6 +941,8 @@ impl RecyclingStats {
             plastic_count: 0,
             metal_count: 0,
             glass_count: 0,
+            organic_count: 0,
+            electronic_count: 0,
             grade_a_count: 0,
             grade_b_count: 0,
             grade_c_count: 0,
@@ -1582,18 +1621,6 @@ pub struct SeasonalMultiplier {
     pub end: u64,
 }
 
-/// Seasonal reward multiplier stored as basis points (100 = 1x, 150 = 1.5x, 500 = 5x max).
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SeasonalMultiplier {
-    /// Multiplier in basis points (e.g. 150 = 1.5x). Max 500 (5x).
-    pub multiplier: u32,
-    /// Unix timestamp when the multiplier becomes active.
-    pub start: u64,
-    /// Unix timestamp when the multiplier expires.
-    pub end: u64,
-}
-
 /// Status of a collection route.
 #[contracttype]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1620,4 +1647,96 @@ pub struct CollectionRoute {
     pub status: RouteStatus,
     /// Ledger timestamp when route was created
     pub created_at: u64,
+}
+
+// ========== Challenge Types ==========
+
+/// Status of a challenge
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ChallengeStatus {
+    Active = 0,
+    Completed = 1,
+    Expired = 2,
+}
+
+/// A time-limited recycling challenge with special rewards
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Challenge {
+    pub id: u64,
+    pub title: soroban_sdk::Symbol,
+    /// Target weight in grams
+    pub target_weight: u128,
+    pub waste_type: WasteType,
+    pub start_time: u64,
+    pub end_time: u64,
+    /// Bonus reward tokens for completing the challenge
+    pub reward: u128,
+    pub status: ChallengeStatus,
+    pub creator: Address,
+}
+
+/// A participant's progress in a challenge
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ChallengeProgress {
+    pub challenge_id: u64,
+    pub participant: Address,
+    /// Weight processed toward the challenge target (grams)
+    pub weight_processed: u128,
+    pub completed: bool,
+    pub joined_at: u64,
+}
+
+// ========== Transfer Approval Workflow Types ==========
+
+/// Status of a pending transfer
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PendingTransferStatus {
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2,
+    Expired = 3,
+}
+
+/// A pending waste transfer awaiting recipient approval
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingTransfer {
+    pub id: u64,
+    pub waste_id: u128,
+    pub from: Address,
+    pub to: Address,
+    pub initiated_at: u64,
+    /// Expiry timestamp (initiated_at + 86400 seconds)
+    pub expires_at: u64,
+    pub status: PendingTransferStatus,
+    pub latitude: i128,
+    pub longitude: i128,
+}
+
+// ========== Milestone Types ==========
+
+/// A recycling milestone with threshold and bonus
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Milestone {
+    /// Threshold in grams
+    pub threshold: u128,
+    pub title: soroban_sdk::Symbol,
+    /// Bonus percentage (e.g. 10 = 10% of total_tokens_earned)
+    pub bonus_pct: u32,
+}
+
+// ========== Leaderboard Types ==========
+
+/// A single leaderboard entry
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LeaderboardEntry {
+    pub participant: Address,
+    pub score: u128,
+    pub rank: u32,
 }

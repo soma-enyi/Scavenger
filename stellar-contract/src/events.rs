@@ -121,3 +121,60 @@ pub fn emit_proposal_executed(env: &Env, proposal_id: u64, executor: &Address) {
     env.events()
         .publish((symbol_short!("prop_exe"), proposal_id), executor);
 }
+
+pub fn emit_seasonal_multiplier_set(env: &Env, multiplier: u32, start: u64, end: u64) {
+    env.events()
+        .publish((symbol_short!("seas_set"),), (multiplier, start, end));
+}
+
+pub fn emit_carbon_credits_earned(
+    env: &Env,
+    participant: &Address,
+    waste_type: crate::types::WasteType,
+    weight: u128,
+    credits: u128,
+) {
+    env.events()
+        .publish((symbol_short!("carbon"), participant), (waste_type, weight, credits));
+}
+
+pub fn emit_processing_status_changed(env: &Env, waste_id: u128, status: u32, caller: &Address, timestamp: u64) {
+    env.events()
+        .publish((symbol_short!("proc_upd"), waste_id), (caller, status, timestamp));
+}
+
+pub fn emit_waste_contaminated(env: &Env, waste_id: u128, verifier: &Address, level: u32) {
+    env.events()
+        .publish((symbol_short!("contam"), waste_id), (verifier, level));
+}
+
+pub fn emit_waste_split(env: &Env, waste_id: u128, owner: &Address, child_ids: &soroban_sdk::Vec<u128>) {
+    env.events()
+        .publish((symbol_short!("split"), waste_id), (owner, child_ids.len()));
+}
+
+pub fn emit_wastes_merged(env: &Env, merged_id: u128, owner: &Address, source_ids: &soroban_sdk::Vec<u128>) {
+    env.events()
+        .publish((symbol_short!("merged"), merged_id), (owner, source_ids.len()));
+}
+
+pub fn emit_waste_reserved(env: &Env, waste_id: u128, reserver: &Address, until: u64) {
+    env.events()
+        .publish((symbol_short!("reserved"), waste_id), (reserver, until));
+}
+
+pub fn emit_reservation_cancelled(env: &Env, waste_id: u128, caller: &Address) {
+    env.events()
+        .publish((symbol_short!("res_canc"), waste_id), caller);
+}
+
+pub fn emit_incentive_scheduled(
+    env: &Env,
+    incentive_id: u64,
+    rewarder: &Address,
+    starts_at: Option<u64>,
+    ends_at: Option<u64>,
+) {
+    env.events()
+        .publish((symbol_short!("inc_sched"), incentive_id), (rewarder, starts_at, ends_at));
+}
