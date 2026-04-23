@@ -196,6 +196,20 @@ impl TransferRecord {
     }
 }
 
+/// A single tier in a tiered incentive program.
+/// Reward is `reward_points` per kg for waste weight in [min_weight_kg, max_weight_kg).
+/// `max_weight_kg == 0` means unbounded (no upper limit).
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IncentiveTier {
+    /// Minimum weight in kg (inclusive) for this tier to apply
+    pub min_weight_kg: u64,
+    /// Maximum weight in kg (exclusive); 0 means unbounded
+    pub max_weight_kg: u64,
+    /// Reward points per kg for this tier
+    pub reward_points: u64,
+}
+
 /// Represents an incentive offered by a manufacturer to encourage recycling
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -206,7 +220,7 @@ pub struct Incentive {
     pub rewarder: Address,
     /// Type of waste this incentive targets
     pub waste_type: WasteType,
-    /// Reward points per kilogram
+    /// Reward points per kilogram (used when no tiers are set)
     pub reward_points: u64,
     /// Total points budget allocated for this incentive
     pub total_budget: u64,
@@ -216,6 +230,10 @@ pub struct Incentive {
     pub active: bool,
     /// Timestamp when the incentive was created
     pub created_at: u64,
+    /// Optional UTC timestamp when the incentive becomes active
+    pub starts_at: Option<u64>,
+    /// Optional UTC timestamp when the incentive expires
+    pub ends_at: Option<u64>,
 }
 
 impl Incentive {
@@ -227,6 +245,7 @@ impl Incentive {
         reward_points: u64,
         total_budget: u64,
         created_at: u64,
+        env: &soroban_sdk::Env,
     ) -> Self {
         Self {
             id,
@@ -237,6 +256,8 @@ impl Incentive {
             remaining_budget: total_budget,
             active: true,
             created_at,
+            starts_at: None,
+            ends_at: None,
         }
     }
 
@@ -245,10 +266,24 @@ impl Incentive {
         self.active = false;
     }
 
-    /// Calculates reward for a given weight in grams
+    /// Calculates reward for a given weight in grams.
+    /// Uses tiered rates if tiers are set; falls back to flat `reward_points`.
     pub fn calculate_reward(&self, weight_grams: u64) -> u64 {
-        // Convert grams to kg and multiply by reward points
-        (weight_grams / 1000) * self.reward_points
+        let weight_kg = weight_grams / 1000;
+        if self.tiers.is_empty() {
+            return weight_kg * self.reward_points;
+        }
+        // Find the matching tier (tiers are sorted by min_weight_kg ascending)
+        for i in 0..self.tiers.len() {
+            let tier = self.tiers.get(i).unwrap();
+            let in_lower = weight_kg >= tier.min_weight_kg;
+            let in_upper = tier.max_weight_kg == 0 || weight_kg < tier.max_weight_kg;
+            if in_lower && in_upper {
+                return weight_kg * tier.reward_points;
+            }
+        }
+        // No tier matched — fall back to flat rate
+        weight_kg * self.reward_points
     }
 
     /// Attempts to claim a reward, returns the amount claimed
@@ -356,12 +391,16 @@ pub enum WasteType {
     Metal = 3,
     /// Glass waste - bottles, jars, containers
     Glass = 4,
+    /// Organic waste - food scraps, yard waste
+    Organic = 5,
+    /// Electronic waste - computers, phones, batteries
+    Electronic = 6,
 }
 
 impl WasteType {
     /// Validates if the value is a valid WasteType variant
     pub fn is_valid(value: u32) -> bool {
-        matches!(value, 0..=4)
+        matches!(value, 0..=6)
     }
 
     /// Converts a u32 to a WasteType
@@ -373,6 +412,8 @@ impl WasteType {
             2 => Some(WasteType::Plastic),
             3 => Some(WasteType::Metal),
             4 => Some(WasteType::Glass),
+            5 => Some(WasteType::Organic),
+            6 => Some(WasteType::Electronic),
             _ => None,
         }
     }
@@ -390,6 +431,23 @@ impl WasteType {
             WasteType::Plastic => "PLASTIC",
             WasteType::Metal => "METAL",
             WasteType::Glass => "GLASS",
+            WasteType::Organic => "ORGANIC",
+            WasteType::Electronic => "ELECTRONIC",
+        }
+    }
+
+    /// Returns the carbon credit rate in milligrams of CO2 equivalent per gram of waste.
+    /// Rates (gCO2e/g): Plastic=2.5, Paper=1.8, Metal=3.2, Glass=0.8, Organic=0.5, Electronic=4.0
+    /// Stored as fixed-point * 1000 to avoid floats: e.g. 2500 = 2.5 gCO2e/g
+    pub fn carbon_credit_rate_milli(&self) -> u128 {
+        match self {
+            WasteType::Paper => 1800,
+            WasteType::PetPlastic => 2500,
+            WasteType::Plastic => 2500,
+            WasteType::Metal => 3200,
+            WasteType::Glass => 800,
+            WasteType::Organic => 500,
+            WasteType::Electronic => 4000,
         }
     }
 
@@ -400,7 +458,7 @@ impl WasteType {
 
     /// Checks if the waste type is biodegradable
     pub fn is_biodegradable(&self) -> bool {
-        matches!(self, WasteType::Paper)
+        matches!(self, WasteType::Paper | WasteType::Organic)
     }
 
     /// Checks if the waste type is infinitely recyclable
@@ -475,11 +533,51 @@ impl Material {
             WasteType::Plastic => 2,
             WasteType::Metal => 5,
             WasteType::Glass => 2,
+            WasteType::Organic => 1,
+            WasteType::Electronic => 6,
         };
 
         // Points = (weight in kg) * multiplier * 10
         (self.weight / 1000) * multiplier * 10
     }
+}
+
+/// Processing stages a waste item moves through in the supply chain.
+/// Stages must progress forward only (Collected → Sorted → Processed → Recycled → Manufactured).
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProcessingStatus {
+    Collected = 0,
+    Sorted = 1,
+    Processed = 2,
+    Recycled = 3,
+    Manufactured = 4,
+}
+
+impl ProcessingStatus {
+    pub fn to_u32(self) -> u32 {
+        self as u32
+    }
+
+    pub fn from_u32(v: u32) -> Option<Self> {
+        match v {
+            0 => Some(ProcessingStatus::Collected),
+            1 => Some(ProcessingStatus::Sorted),
+            2 => Some(ProcessingStatus::Processed),
+            3 => Some(ProcessingStatus::Recycled),
+            4 => Some(ProcessingStatus::Manufactured),
+            _ => None,
+        }
+    }
+}
+
+/// A single entry in a waste item's processing history.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProcessingRecord {
+    pub status: ProcessingStatus,
+    pub timestamp: u64,
+    pub updated_by: Address,
 }
 
 /// Represents a waste item in the recycling system
@@ -532,7 +630,15 @@ impl Waste {
         is_active: bool,
         is_confirmed: bool,
         confirmer: Address,
+        expires_at: u64,
     ) -> Self {
+        let initial_record = ProcessingRecord {
+            status: ProcessingStatus::Collected,
+            timestamp: env.ledger().timestamp(),
+            updated_by: current_owner.clone(),
+        };
+        let mut history = soroban_sdk::Vec::new(env);
+        history.push_back(initial_record);
         Self {
             waste_id,
             waste_type,
@@ -549,6 +655,11 @@ impl Waste {
             image_hash: None,
             document_hashes: soroban_sdk::Vec::new(env),
         }
+    }
+
+    /// Returns true if the waste has expired at the given timestamp.
+    pub fn is_expired(&self, now: u64) -> bool {
+        self.expires_at != 0 && now >= self.expires_at
     }
 
     /// Validates that the waste has valid coordinates
@@ -723,6 +834,13 @@ impl WasteBuilder {
     /// Builds the Waste instance
     pub fn build(self, env: &soroban_sdk::Env) -> Waste {
         let confirmer = self.confirmer.unwrap_or_else(|| self.current_owner.clone());
+        let initial_record = ProcessingRecord {
+            status: ProcessingStatus::Collected,
+            timestamp: env.ledger().timestamp(),
+            updated_by: self.current_owner.clone(),
+        };
+        let mut history = soroban_sdk::Vec::new(env);
+        history.push_back(initial_record);
         Waste {
             waste_id: self.waste_id,
             waste_type: self.waste_type,
@@ -756,6 +874,8 @@ pub struct RecyclingStats {
     pub total_weight: u64,
     /// Total reward points earned
     pub total_points: u64,
+    /// Total carbon credits earned (grams of CO2 equivalent)
+    pub carbon_credits_earned: u128,
     /// Number of materials by waste type
     pub paper_count: u64,
     pub pet_plastic_count: u64,
@@ -778,6 +898,7 @@ impl RecyclingStats {
             verified_submissions: 0,
             total_weight: 0,
             total_points: 0,
+            carbon_credits_earned: 0,
             paper_count: 0,
             pet_plastic_count: 0,
             plastic_count: 0,
@@ -812,14 +933,17 @@ impl RecyclingStats {
             WasteType::Plastic => self.plastic_count += 1,
             WasteType::Metal => self.metal_count += 1,
             WasteType::Glass => self.glass_count += 1,
+            WasteType::Organic => self.organic_count += 1,
+            WasteType::Electronic => self.electronic_count += 1,
         }
     }
 
-    /// Records a material verification
+    /// Records a material verification and updates carbon credits
     pub fn record_verification(&mut self, material: &Material) {
         if material.verified {
             self.verified_submissions += 1;
             self.total_points += material.calculate_reward_points();
+            self.carbon_credits_earned += calculate_carbon_credits(material.waste_type, material.weight as u128);
         }
     }
 
@@ -840,6 +964,8 @@ impl RecyclingStats {
             (WasteType::Plastic, self.plastic_count),
             (WasteType::Metal, self.metal_count),
             (WasteType::Glass, self.glass_count),
+            (WasteType::Organic, self.organic_count),
+            (WasteType::Electronic, self.electronic_count),
         ];
 
         counts
@@ -867,6 +993,12 @@ impl RecyclingStats {
     pub fn is_verified_contributor(&self) -> bool {
         self.verification_rate() >= 80
     }
+}
+
+/// Calculate carbon credits (grams of CO2 equivalent) for a given waste type and weight in grams.
+/// Formula: credits = weight_grams * rate_milli / 1000
+pub fn calculate_carbon_credits(waste_type: WasteType, weight_grams: u128) -> u128 {
+    weight_grams * waste_type.carbon_credit_rate_milli() / 1000
 }
 
 #[cfg(test)]
@@ -1163,6 +1295,8 @@ mod waste_type_tests {
         assert_eq!(WasteType::Plastic as u32, 2);
         assert_eq!(WasteType::Metal as u32, 3);
         assert_eq!(WasteType::Glass as u32, 4);
+        assert_eq!(WasteType::Organic as u32, 5);
+        assert_eq!(WasteType::Electronic as u32, 6);
     }
 
     #[test]
@@ -1172,7 +1306,9 @@ mod waste_type_tests {
         assert!(WasteType::is_valid(2));
         assert!(WasteType::is_valid(3));
         assert!(WasteType::is_valid(4));
-        assert!(!WasteType::is_valid(5));
+        assert!(WasteType::is_valid(5));
+        assert!(WasteType::is_valid(6));
+        assert!(!WasteType::is_valid(7));
         assert!(!WasteType::is_valid(999));
     }
 
@@ -1183,7 +1319,9 @@ mod waste_type_tests {
         assert_eq!(WasteType::from_u32(2), Some(WasteType::Plastic));
         assert_eq!(WasteType::from_u32(3), Some(WasteType::Metal));
         assert_eq!(WasteType::from_u32(4), Some(WasteType::Glass));
-        assert_eq!(WasteType::from_u32(5), None);
+        assert_eq!(WasteType::from_u32(5), Some(WasteType::Organic));
+        assert_eq!(WasteType::from_u32(6), Some(WasteType::Electronic));
+        assert_eq!(WasteType::from_u32(7), None);
         assert_eq!(WasteType::from_u32(999), None);
     }
 
@@ -1194,6 +1332,8 @@ mod waste_type_tests {
         assert_eq!(WasteType::Plastic.to_u32(), 2);
         assert_eq!(WasteType::Metal.to_u32(), 3);
         assert_eq!(WasteType::Glass.to_u32(), 4);
+        assert_eq!(WasteType::Organic.to_u32(), 5);
+        assert_eq!(WasteType::Electronic.to_u32(), 6);
     }
 
     #[test]
@@ -1203,16 +1343,19 @@ mod waste_type_tests {
         assert_eq!(WasteType::Plastic.as_str(), "PLASTIC");
         assert_eq!(WasteType::Metal.as_str(), "METAL");
         assert_eq!(WasteType::Glass.as_str(), "GLASS");
+        assert_eq!(WasteType::Organic.as_str(), "ORGANIC");
+        assert_eq!(WasteType::Electronic.as_str(), "ELECTRONIC");
     }
 
     #[test]
     fn test_waste_type_display() {
-        // Test Display trait by converting to string representation
         assert_eq!(WasteType::Paper.as_str(), "PAPER");
         assert_eq!(WasteType::PetPlastic.as_str(), "PETPLASTIC");
         assert_eq!(WasteType::Plastic.as_str(), "PLASTIC");
         assert_eq!(WasteType::Metal.as_str(), "METAL");
         assert_eq!(WasteType::Glass.as_str(), "GLASS");
+        assert_eq!(WasteType::Organic.as_str(), "ORGANIC");
+        assert_eq!(WasteType::Electronic.as_str(), "ELECTRONIC");
     }
 
     #[test]
@@ -1231,6 +1374,8 @@ mod waste_type_tests {
         assert!(!WasteType::Plastic.is_biodegradable());
         assert!(!WasteType::Metal.is_biodegradable());
         assert!(!WasteType::Glass.is_biodegradable());
+        assert!(WasteType::Organic.is_biodegradable());
+        assert!(!WasteType::Electronic.is_biodegradable());
     }
 
     #[test]
@@ -1264,6 +1409,8 @@ mod waste_type_tests {
             WasteType::Plastic,
             WasteType::Metal,
             WasteType::Glass,
+            WasteType::Organic,
+            WasteType::Electronic,
         ];
 
         for (i, waste_type) in types.iter().enumerate() {
@@ -1419,4 +1566,62 @@ pub struct GlobalMetrics {
     pub total_wastes_count: u64,
     /// Total amount of tokens earned across all participants
     pub total_tokens_earned: u128,
+    /// Total carbon credits earned across all participants (grams CO2 equivalent)
+    pub total_carbon_credits: u128,
+}
+
+/// Seasonal reward multiplier stored as basis points (100 = 1x, 150 = 1.5x, 500 = 5x max).
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SeasonalMultiplier {
+    /// Multiplier in basis points (e.g. 150 = 1.5x). Max 500 (5x).
+    pub multiplier: u32,
+    /// Unix timestamp when the multiplier becomes active.
+    pub start: u64,
+    /// Unix timestamp when the multiplier expires.
+    pub end: u64,
+}
+
+/// Seasonal reward multiplier stored as basis points (100 = 1x, 150 = 1.5x, 500 = 5x max).
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SeasonalMultiplier {
+    /// Multiplier in basis points (e.g. 150 = 1.5x). Max 500 (5x).
+    pub multiplier: u32,
+    /// Unix timestamp when the multiplier becomes active.
+    pub start: u64,
+    /// Unix timestamp when the multiplier expires.
+    pub end: u64,
+}
+
+/// Status of a waste dispute.
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DisputeStatus {
+    /// Dispute filed, awaiting admin review
+    Pending = 0,
+    /// Admin resolved in favour of the disputer
+    Resolved = 1,
+    /// Admin rejected the dispute
+    Rejected = 2,
+}
+
+/// A dispute raised against a waste item.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Dispute {
+    /// Unique dispute ID
+    pub id: u64,
+    /// The waste item under dispute
+    pub waste_id: u128,
+    /// Address that raised the dispute
+    pub disputer: Address,
+    /// Free-text reason (max 500 chars)
+    pub reason: soroban_sdk::String,
+    /// Current status
+    pub status: DisputeStatus,
+    /// Admin resolution note (empty until resolved/rejected)
+    pub resolution: soroban_sdk::String,
+    /// Ledger timestamp when dispute was created
+    pub created_at: u64,
 }
