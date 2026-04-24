@@ -1,0 +1,47 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "download": "Télécharger"
+  },
+  "nav": {
+    "home": "Accueil",
+    "dashboard": "Tableau de bord",
+    "analytics": "Analytique",
+    "incentives": "Incitatifs",
+    "community": "Communauté",
+    "settings": "Paramètres"
+  },
+  "waste": {
+    "title": "Gestion des déchets",
+    "register": "Enregistrer les déchets",
+    "transfer": "Transférer les déchets",
+    "details": "Détails des déchets",
+    "type": "Type de déchet",
+    "quantity": "Quantité",
+    "location": "Emplacement",
+    "status": "Statut"
+  },
+  "errors": {
+    "network": "Erreur réseau",
+    "unauthorized": "Accès non autorisé",
+    "notFound": "Ressource introuvable",
+    "validation": "Erreur de validation",
+    "unknown": "Une erreur inconnue s'est produite"
+  },
+  "settings": {
+    "language": "Langue",
+    "theme": "Thème",
+    "notifications": "Notifications"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "search": "搜索",
+    "filter": "筛选",
+    "export": "导出",
+    "download": "下载"
+  },
+  "nav": {
+    "home": "首页",
+    "dashboard": "仪表板",
+    "analytics": "分析",
+    "incentives": "激励",
+    "community": "社区",
+    "settings": "设置"
+  },
+  "waste": {
+    "title": "废物管理",
+    "register": "登记废物",
+    "transfer": "转移废物",
+    "details": "废物详情",
+    "type": "废物类型",
+    "quantity": "数量",
+    "location": "位置",
+    "status": "状态"
+  },
+  "errors": {
+    "network": "网络错误",
+    "unauthorized": "未授权访问",
+    "notFound": "资源未找到",
+    "validation": "验证错误",
+    "unknown": "发生未知错误"
+  },
+  "settings": {
+    "language": "语言",
+    "theme": "主题",
+    "notifications": "通知"
+  }
+}

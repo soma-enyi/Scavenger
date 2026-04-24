@@ -1,0 +1,47 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "export": "Exportar",
+    "download": "Descargar"
+  },
+  "nav": {
+    "home": "Inicio",
+    "dashboard": "Panel",
+    "analytics": "Análisis",
+    "incentives": "Incentivos",
+    "community": "Comunidad",
+    "settings": "Configuración"
+  },
+  "waste": {
+    "title": "Gestión de Residuos",
+    "register": "Registrar Residuo",
+    "transfer": "Transferir Residuo",
+    "details": "Detalles del Residuo",
+    "type": "Tipo de Residuo",
+    "quantity": "Cantidad",
+    "location": "Ubicación",
+    "status": "Estado"
+  },
+  "errors": {
+    "network": "Error de red",
+    "unauthorized": "Acceso no autorizado",
+    "notFound": "Recurso no encontrado",
+    "validation": "Error de validación",
+    "unknown": "Ocurrió un error desconocido"
+  },
+  "settings": {
+    "language": "Idioma",
+    "theme": "Tema",
+    "notifications": "Notificaciones"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "download": "Download"
+  },
+  "nav": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "analytics": "Analytics",
+    "incentives": "Incentives",
+    "community": "Community",
+    "settings": "Settings"
+  },
+  "waste": {
+    "title": "Waste Management",
+    "register": "Register Waste",
+    "transfer": "Transfer Waste",
+    "details": "Waste Details",
+    "type": "Waste Type",
+    "quantity": "Quantity",
+    "location": "Location",
+    "status": "Status"
+  },
+  "errors": {
+    "network": "Network error occurred",
+    "unauthorized": "Unauthorized access",
+    "notFound": "Resource not found",
+    "validation": "Validation error",
+    "unknown": "An unknown error occurred"
+  },
+  "settings": {
+    "language": "Language",
+    "theme": "Theme",
+    "notifications": "Notifications"
+  }
+}
