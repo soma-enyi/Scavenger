@@ -43,6 +43,9 @@ const CommunityPage = lazy(() =>
 const AnalyticsPage = lazy(() =>
   import('@/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage }))
 )
+const WasteMapPage = lazy(() =>
+  import('@/pages/WasteMapPage').then((m) => ({ default: m.WasteMapPage }))
+)
 
 // eslint-disable-next-line react-refresh/only-export-components
 function PageFallback() {
@@ -85,7 +88,8 @@ export const router = createBrowserRouter([
       { path: 'rewards', element: <RewardsPage /> },
       { path: 'tracker', element: <SupplyChainTrackerPage /> },
       { path: 'community', element: <CommunityPage /> },
-      { path: 'analytics', element: <AnalyticsPage /> }
+      { path: 'analytics', element: <AnalyticsPage /> },
+      { path: 'map', element: <WasteMapPage /> }
     ]
   },
   { path: '*', element: <NotFoundPage /> }
