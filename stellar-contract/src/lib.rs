@@ -9,9 +9,10 @@ mod validation;
 pub use errors::Error;
 pub use types::{
     Challenge, ChallengeProgress, ChallengeStatus, GlobalMetrics, GradeRecord, Incentive,
-    LeaderboardEntry, Material, Milestone, ParticipantRole, PendingTransfer,
-    PendingTransferStatus, ProcessingRecord, ProcessingStatus, RecyclingStats, SeasonalMultiplier,
-    TransferItemType, TransferRecord, TransferStatus, Waste, WasteGrade, WasteTransfer, WasteType,
+    LeaderboardEntry, Material, MaterialComposition, Milestone, ParticipantRole, PendingTransfer,
+    PendingTransferStatus, ProcessingRecord, ProcessingStatus, RecyclingGoal, RecyclingStats,
+    SeasonalMultiplier, TransferItemType, TransferRecord, TransferStatus, Waste, WasteGrade,
+    WasteTransfer, WasteType,
 };
 pub use types::calculate_carbon_credits;
 
@@ -1801,6 +1802,17 @@ impl ScavengerContract {
             .instance()
             .set(&("participant_wastes", recycler.clone()), &waste_list);
 
+        // Track total weight in stats for recycling rate calculation
+        let stats_key = ("stats", recycler.clone());
+        let mut stats: RecyclingStats = env
+            .storage()
+            .instance()
+            .get(&stats_key)
+            .unwrap_or_else(|| RecyclingStats::new(recycler.clone()));
+        stats.total_weight = stats.total_weight.saturating_add(weight as u64);
+        stats.update_recycling_rate();
+        env.storage().instance().set(&stats_key, &stats);
+
         // Emit waste registered event
         events::emit_waste_registered(
             &env, waste_id, &recycler, waste_type, weight, latitude, longitude,
@@ -1868,6 +1880,48 @@ impl ScavengerContract {
 
         env.storage().instance().set(&("waste_v2", waste_id), &waste);
         events::emit_processing_status_changed(&env, waste_id, new_status.to_u32(), &caller, timestamp);
+
+        // When waste reaches Recycled status, update stats and goals
+        if new_status == ProcessingStatus::Recycled {
+            let owner = waste.current_owner.clone();
+            let stats_key = ("stats", owner.clone());
+            let mut stats: RecyclingStats = env
+                .storage()
+                .instance()
+                .get(&stats_key)
+                .unwrap_or_else(|| RecyclingStats::new(owner.clone()));
+            stats.recycled_weight = stats.recycled_weight.saturating_add(waste.weight);
+            stats.update_recycling_rate();
+            env.storage().instance().set(&stats_key, &stats);
+
+            // Update goals progress
+            let goals_key = ("goals", owner.clone());
+            let mut goals: Vec<types::RecyclingGoal> = env
+                .storage()
+                .instance()
+                .get(&goals_key)
+                .unwrap_or(Vec::new(&env));
+            let mut goals_updated = false;
+            for i in 0..goals.len() {
+                let mut goal = goals.get(i).unwrap();
+                if goal.achieved {
+                    continue;
+                }
+                let type_matches = goal.waste_type.map_or(true, |t| t == waste.waste_type);
+                if type_matches {
+                    goal.current_weight = goal.current_weight.saturating_add(waste.weight);
+                    if goal.current_weight >= goal.target_weight {
+                        goal.achieved = true;
+                        events::emit_goal_achieved(&env, &owner, goal.target_weight);
+                    }
+                    goals.set(i, goal);
+                    goals_updated = true;
+                }
+            }
+            if goals_updated {
+                env.storage().instance().set(&goals_key, &goals);
+            }
+        }
 
         waste
     }
@@ -5042,5 +5096,301 @@ impl ScavengerContract {
         events::emit_incentive_scheduled(&env, incentive_id, &rewarder, starts_at, ends_at);
 
         Ok(incentive)
+    }
+
+    // ========== Feature: Processing Costs Tracking ==========
+
+    /// Set the processing cost for a v2 waste item.
+    ///
+    /// Only the current owner may call this.
+    ///
+    /// # Errors
+    /// - [`Error::WasteNotFound`] if the waste does not exist.
+    /// - [`Error::NotWasteOwner`] if caller is not the current owner.
+    pub fn set_processing_cost(
+        env: Env,
+        waste_id: u128,
+        owner: Address,
+        cost: u128,
+    ) -> Result<types::Waste, Error> {
+        owner.require_auth();
+        Self::require_not_paused(&env);
+
+        let mut waste: types::Waste = env
+            .storage()
+            .instance()
+            .get(&("waste_v2", waste_id))
+            .ok_or(Error::WasteNotFound)?;
+
+        if waste.current_owner != owner {
+            return Err(Error::NotWasteOwner);
+        }
+
+        waste.processing_cost = cost;
+        env.storage().instance().set(&("waste_v2", waste_id), &waste);
+
+        // Update participant stats
+        let stats_key = ("stats", owner.clone());
+        let mut stats: RecyclingStats = env
+            .storage()
+            .instance()
+            .get(&stats_key)
+            .unwrap_or_else(|| RecyclingStats::new(owner.clone()));
+        stats.total_processing_costs = stats.total_processing_costs.saturating_add(cost);
+        env.storage().instance().set(&stats_key, &stats);
+
+        Ok(waste)
+    }
+
+    /// Get the total processing costs across all v2 waste items.
+    pub fn get_total_processing_costs(env: Env) -> u128 {
+        let count: u64 = env
+            .storage()
+            .instance()
+            .get(&("waste_count",))
+            .unwrap_or(0);
+        let mut total: u128 = 0;
+        for id in 1u128..=(count as u128) {
+            if let Some(w) = env
+                .storage()
+                .instance()
+                .get::<_, types::Waste>(&("waste_v2", id))
+            {
+                total = total.saturating_add(w.processing_cost);
+            }
+        }
+        total
+    }
+
+    /// Get the total processing costs for a specific participant.
+    pub fn get_participant_processing_costs(env: Env, participant: Address) -> u128 {
+        let stats: Option<RecyclingStats> = env.storage().instance().get(&("stats", participant));
+        stats.map(|s| s.total_processing_costs).unwrap_or(0)
+    }
+
+    // ========== Feature: Material Composition Tracking ==========
+
+    /// Set the material composition for a v2 waste item.
+    ///
+    /// Only a registered Collector or Manufacturer (verifier) may call this.
+    /// Percentages must sum to exactly 100. Maximum 10 composition entries.
+    ///
+    /// # Errors
+    /// - [`Error::WasteNotFound`] if the waste does not exist.
+    /// - [`Error::NotRegistered`] if caller is not registered.
+    /// - [`Error::InvalidAmount`] if percentages don't sum to 100 or > 10 entries.
+    pub fn set_waste_composition(
+        env: Env,
+        waste_id: u128,
+        verifier: Address,
+        composition: Vec<types::MaterialComposition>,
+    ) -> Result<types::Waste, Error> {
+        verifier.require_auth();
+        Self::require_not_paused(&env);
+
+        // Verifier must be a registered Collector or Manufacturer
+        let participant = Self::get_participant(env.clone(), verifier.clone())
+            .ok_or(Error::NotRegistered)?;
+        if participant.role == ParticipantRole::Recycler {
+            return Err(Error::Unauthorized);
+        }
+
+        if composition.len() > 10 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let mut total: u32 = 0;
+        for entry in composition.iter() {
+            total = total.saturating_add(entry.percentage);
+        }
+        if total != 100 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let mut waste: types::Waste = env
+            .storage()
+            .instance()
+            .get(&("waste_v2", waste_id))
+            .ok_or(Error::WasteNotFound)?;
+
+        waste.composition = composition;
+        env.storage().instance().set(&("waste_v2", waste_id), &waste);
+
+        Ok(waste)
+    }
+
+    /// Get all v2 waste IDs that contain at least `min_percentage` of `material_type`.
+    pub fn get_wastes_by_composition(
+        env: Env,
+        material_type: WasteType,
+        min_percentage: u32,
+    ) -> Vec<u128> {
+        let count: u64 = env
+            .storage()
+            .instance()
+            .get(&("waste_count",))
+            .unwrap_or(0);
+        let mut result = Vec::new(&env);
+        for id in 1u128..=(count as u128) {
+            if let Some(w) = env
+                .storage()
+                .instance()
+                .get::<_, types::Waste>(&("waste_v2", id))
+            {
+                for entry in w.composition.iter() {
+                    if entry.material_type == material_type && entry.percentage >= min_percentage {
+                        result.push_back(id);
+                        break;
+                    }
+                }
+            }
+        }
+        result
+    }
+
+    // ========== Feature: Recycling Goals ==========
+
+    /// Set a recycling goal for the caller.
+    ///
+    /// Maximum 5 active goals per participant.
+    /// Goal duration must be between 1 and 12 months from now (approx 30–365 days).
+    ///
+    /// # Errors
+    /// - [`Error::NotRegistered`] if caller is not registered.
+    /// - [`Error::InvalidAmount`] if target_weight is 0, too many goals, or invalid duration.
+    pub fn set_recycling_goal(
+        env: Env,
+        participant: Address,
+        target_weight: u128,
+        target_date: u64,
+        waste_type: Option<WasteType>,
+    ) -> Result<(), Error> {
+        participant.require_auth();
+        Self::require_not_paused(&env);
+
+        if Self::get_participant(env.clone(), participant.clone()).is_none() {
+            return Err(Error::NotRegistered);
+        }
+
+        if target_weight == 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let now = env.ledger().timestamp();
+        let one_month_secs: u64 = 30 * 24 * 60 * 60;
+        let twelve_months_secs: u64 = 365 * 24 * 60 * 60;
+
+        if target_date < now + one_month_secs || target_date > now + twelve_months_secs {
+            return Err(Error::InvalidAmount);
+        }
+
+        let goals_key = ("goals", participant.clone());
+        let mut goals: Vec<types::RecyclingGoal> = env
+            .storage()
+            .instance()
+            .get(&goals_key)
+            .unwrap_or(Vec::new(&env));
+
+        // Count active (non-achieved) goals
+        let mut active_count: u32 = 0;
+        for goal in goals.iter() {
+            if !goal.achieved {
+                active_count += 1;
+            }
+        }
+        if active_count >= 5 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let goal = types::RecyclingGoal {
+            target_weight,
+            target_date,
+            waste_type,
+            current_weight: 0,
+            achieved: false,
+            created_at: now,
+        };
+
+        goals.push_back(goal);
+        env.storage().instance().set(&goals_key, &goals);
+
+        env.events().publish(
+            (symbol_short!("goal_set"), participant.clone()),
+            (target_weight, target_date),
+        );
+
+        Ok(())
+    }
+
+    /// Get the recycling goals and progress for a participant.
+    pub fn get_goal_progress(env: Env, participant: Address) -> Vec<types::RecyclingGoal> {
+        env.storage()
+            .instance()
+            .get(&("goals", participant))
+            .unwrap_or(Vec::new(&env))
+    }
+
+    /// Get all participants who have at least one achieved goal.
+    pub fn get_participants_meeting_goals(env: Env) -> Vec<Address> {
+        let index: Vec<Address> = env
+            .storage()
+            .instance()
+            .get(&PART_INDEX)
+            .unwrap_or(Vec::new(&env));
+        let mut result = Vec::new(&env);
+        for addr in index.iter() {
+            let goals: Vec<types::RecyclingGoal> = env
+                .storage()
+                .instance()
+                .get(&("goals", addr.clone()))
+                .unwrap_or(Vec::new(&env));
+            let mut has_achieved = false;
+            for goal in goals.iter() {
+                if goal.achieved {
+                    has_achieved = true;
+                    break;
+                }
+            }
+            if has_achieved {
+                result.push_back(addr);
+            }
+        }
+        result
+    }
+
+    // ========== Feature: Recycling Rate Calculations ==========
+
+    /// Get the global recycling rate in basis points (e.g. 9500 = 95.00%).
+    /// Calculated as (total recycled weight / total weight) * 10000.
+    pub fn get_global_recycling_rate(env: Env) -> u32 {
+        let count: u64 = env
+            .storage()
+            .instance()
+            .get(&("waste_count",))
+            .unwrap_or(0);
+        let mut total_weight: u128 = 0;
+        let mut recycled_weight: u128 = 0;
+        for id in 1u128..=(count as u128) {
+            if let Some(w) = env
+                .storage()
+                .instance()
+                .get::<_, types::Waste>(&("waste_v2", id))
+            {
+                total_weight = total_weight.saturating_add(w.weight);
+                if w.recycled_timestamp > 0 {
+                    recycled_weight = recycled_weight.saturating_add(w.weight);
+                }
+            }
+        }
+        if total_weight == 0 {
+            return 0;
+        }
+        ((recycled_weight * 10_000) / total_weight) as u32
+    }
+
+    /// Get the recycling rate for a specific participant in basis points.
+    pub fn get_participant_recycling_rate(env: Env, participant: Address) -> u32 {
+        let stats: Option<RecyclingStats> = env.storage().instance().get(&("stats", participant));
+        stats.map(|s| s.recycling_rate).unwrap_or(0)
     }
 }

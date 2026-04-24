@@ -583,6 +583,35 @@ pub struct ProcessingRecord {
     pub updated_by: Address,
 }
 
+/// Represents a single material component in a waste item's composition.
+/// Percentages across all entries for a waste item must sum to 100.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MaterialComposition {
+    /// The type of material in this component
+    pub material_type: WasteType,
+    /// Percentage of this material (0-100, all entries must sum to 100)
+    pub percentage: u32,
+}
+
+/// Represents a participant's recycling goal
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RecyclingGoal {
+    /// Target weight in grams
+    pub target_weight: u128,
+    /// Target completion timestamp (Unix seconds)
+    pub target_date: u64,
+    /// Waste type this goal applies to (None = any type)
+    pub waste_type: Option<WasteType>,
+    /// Weight already recycled toward this goal
+    pub current_weight: u128,
+    /// Whether this goal has been achieved
+    pub achieved: bool,
+    /// Timestamp when goal was created
+    pub created_at: u64,
+}
+
 /// Represents a waste item in the recycling system
 /// This is the main struct that tracks waste throughout its lifecycle
 #[contracttype]
@@ -632,6 +661,10 @@ pub struct Waste {
     pub processing_status: ProcessingStatus,
     /// Processing history
     pub processing_history: soroban_sdk::Vec<ProcessingRecord>,
+    /// Processing cost in smallest token unit (set by owner)
+    pub processing_cost: u128,
+    /// Material composition (max 10 entries, percentages sum to 100)
+    pub composition: soroban_sdk::Vec<MaterialComposition>,
 }
 
 impl Waste {
@@ -681,10 +714,10 @@ impl Waste {
             contamination_reason: soroban_sdk::String::from_str(env, ""),
             processing_status: ProcessingStatus::Collected,
             processing_history: history,
+            processing_cost: 0,
+            composition: soroban_sdk::Vec::new(env),
         }
     }
-
-    /// Returns true if the waste has expired at the given timestamp.
     pub fn is_expired(&self, now: u64) -> bool {
         self.expires_at != 0 && now >= self.expires_at
     }
@@ -891,6 +924,8 @@ impl WasteBuilder {
             contamination_reason: soroban_sdk::String::from_str(env, ""),
             processing_status: ProcessingStatus::Collected,
             processing_history: history,
+            processing_cost: 0,
+            composition: soroban_sdk::Vec::new(env),
         }
     }
 }
@@ -924,6 +959,13 @@ pub struct RecyclingStats {
     pub grade_b_count: u64,
     pub grade_c_count: u64,
     pub grade_d_count: u64,
+    /// Total processing costs incurred (in smallest token unit)
+    pub total_processing_costs: u128,
+    /// Recycling rate in basis points (e.g. 9500 = 95.00%)
+    /// Calculated as (recycled_weight / total_weight) * 10000
+    pub recycling_rate: u32,
+    /// Total weight of recycled waste (for rate calculation)
+    pub recycled_weight: u128,
 }
 
 impl RecyclingStats {
@@ -947,6 +989,9 @@ impl RecyclingStats {
             grade_b_count: 0,
             grade_c_count: 0,
             grade_d_count: 0,
+            total_processing_costs: 0,
+            recycling_rate: 0,
+            recycled_weight: 0,
         }
     }
 
@@ -1031,6 +1076,16 @@ impl RecyclingStats {
     /// Checks if participant is a verified contributor (80%+ verification rate)
     pub fn is_verified_contributor(&self) -> bool {
         self.verification_rate() >= 80
+    }
+
+    /// Recalculates and stores the recycling rate in basis points.
+    /// rate = (recycled_weight / total_weight) * 10000
+    pub fn update_recycling_rate(&mut self) {
+        self.recycling_rate = if self.total_weight == 0 {
+            0
+        } else {
+            ((self.recycled_weight as u128 * 10_000) / self.total_weight as u128) as u32
+        };
     }
 }
 

@@ -178,3 +178,8 @@ pub fn emit_incentive_scheduled(
     env.events()
         .publish((symbol_short!("inc_sched"), incentive_id), (rewarder, starts_at, ends_at));
 }
+
+pub fn emit_goal_achieved(env: &Env, participant: &Address, target_weight: u128) {
+    env.events()
+        .publish((symbol_short!("goal_ach"), participant), target_weight);
+}
