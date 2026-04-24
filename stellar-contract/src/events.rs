@@ -1,6 +1,6 @@
 use soroban_sdk::{symbol_short, Address, Env, Symbol};
 
-use crate::types::{ParticipantRole, WasteGrade, WasteType};
+use crate::types::{ParticipantRole, WasteGrade, WasteType, CertificationLevel};
 
 const WASTE_REGISTERED: Symbol = symbol_short!("recycled");
 const DONATION_MADE: Symbol = symbol_short!("donated");
@@ -8,6 +8,11 @@ const WASTE_TRANSFERRED: Symbol = symbol_short!("transfer");
 const WASTE_CONFIRMED: Symbol = symbol_short!("confirmed");
 const PARTICIPANT_REGISTERED: Symbol = symbol_short!("reg");
 const TOKENS_REWARDED: Symbol = symbol_short!("rewarded");
+const CERTIFICATION_GRANTED: Symbol = symbol_short!("cert_gr");
+const AUCTION_CREATED: Symbol = symbol_short!("auc_cre");
+const BID_PLACED: Symbol = symbol_short!("bid_plc");
+const AUCTION_ENDED: Symbol = symbol_short!("auc_end");
+const BULK_IMPORT_COMPLETED: Symbol = symbol_short!("bulk_imp");
 
 /// Emit event when waste is registered
 pub fn emit_waste_registered(
@@ -146,6 +151,36 @@ pub fn emit_processing_status_changed(env: &Env, waste_id: u128, status: u32, ca
 pub fn emit_waste_contaminated(env: &Env, waste_id: u128, verifier: &Address, level: u32) {
     env.events()
         .publish((symbol_short!("contam"), waste_id), (verifier, level));
+}
+
+/// Emit event when a participant is granted a certification
+pub fn emit_certification_granted(env: &Env, participant: &Address, level: CertificationLevel) {
+    env.events()
+        .publish((CERTIFICATION_GRANTED, participant), level.to_u32());
+}
+
+/// Emit event when an auction is created
+pub fn emit_auction_created(env: &Env, auction_id: u64, waste_id: u128, creator: &Address, start_price: u128, end_time: u64) {
+    env.events()
+        .publish((AUCTION_CREATED, auction_id), (waste_id, creator, start_price, end_time));
+}
+
+/// Emit event when a bid is placed
+pub fn emit_bid_placed(env: &Env, auction_id: u64, bidder: &Address, amount: u128) {
+    env.events()
+        .publish((BID_PLACED, auction_id), (bidder, amount));
+}
+
+/// Emit event when an auction ends
+pub fn emit_auction_ended(env: &Env, auction_id: u64, winner: Option<&Address>, final_price: u128) {
+    env.events()
+        .publish((AUCTION_ENDED, auction_id), (winner, final_price));
+}
+
+/// Emit event when bulk import is completed
+pub fn emit_bulk_import_completed(env: &Env, item_type: &str, count: u32) {
+    env.events()
+        .publish((BULK_IMPORT_COMPLETED,), (item_type, count));
 }
 
 pub fn emit_waste_split(env: &Env, waste_id: u128, owner: &Address, child_ids: &soroban_sdk::Vec<u128>) {
