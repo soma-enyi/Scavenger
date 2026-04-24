@@ -1,12 +1,20 @@
-import { BarChart3, TrendingUp, Package, Users } from 'lucide-react'
+import { BarChart3, TrendingUp, Package, Users, Download, Calendar } from 'lucide-react'
 import { StatCard } from '@/components/ui/StatCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { useStats } from '@/hooks/useStats'
 import { useAppTitle } from '@/hooks/useAppTitle'
+import { useAnalyticsExport } from '@/hooks/useAnalyticsExport'
+import { DateRangeSelector } from '@/components/analytics/DateRangeSelector'
+import { LeaderboardCard } from '@/components/analytics/LeaderboardCard'
+import { CarbonImpactCard } from '@/components/analytics/CarbonImpactCard'
+import { useState } from 'react'
 
 export function AnalyticsPage() {
   useAppTitle('Analytics')
   const { totalWastes, isLoading } = useStats()
+  const { exportToCSV, exportToPDF } = useAnalyticsExport()
+  const [dateRange, setDateRange] = useState({ start: null, end: null })
 
   const chartData = [
     { month: 'Jan', plastic: 45, metal: 30, glass: 25 },
@@ -19,11 +27,24 @@ export function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-        <p className="mt-1 text-muted-foreground">
-          Track waste management trends and performance metrics
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+          <p className="mt-1 text-muted-foreground">
+            Track waste management trends and performance metrics
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <DateRangeSelector value={dateRange} onChange={setDateRange} />
+          <Button onClick={exportToCSV} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            CSV
+          </Button>
+          <Button onClick={exportToPDF} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            PDF
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -163,6 +184,11 @@ export function AnalyticsPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <LeaderboardCard />
+        <CarbonImpactCard />
       </div>
     </div>
   )
