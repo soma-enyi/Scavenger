@@ -73,6 +73,9 @@ const CharityDonationsPage = lazy(() =>
 const ImpactCalculatorPage = lazy(() =>
   import('@/pages/ImpactCalculatorPage').then((m) => ({ default: m.ImpactCalculatorPage }))
 )
+const GamificationPage = lazy(() =>
+  import('@/pages/GamificationPage').then((m) => ({ default: m.GamificationPage }))
+)
 
 // eslint-disable-next-line react-refresh/only-export-components
 function PageFallback() {
@@ -125,7 +128,8 @@ export const router = createBrowserRouter([
       { path: 'predictions', element: <PredictiveAnalyticsPage /> },
       { path: 'subscriptions', element: <SubscriptionsPage /> },
       { path: 'charities', element: <CharityDonationsPage /> },
-      { path: 'impact', element: <ImpactCalculatorPage /> }
+      { path: 'impact', element: <ImpactCalculatorPage /> },
+      { path: 'achievements', element: <GamificationPage /> }
     ]
   },
   { path: '*', element: <NotFoundPage /> }
