@@ -52,6 +52,18 @@ const AdminDashboardPage = lazy(() =>
 const VerificationPage = lazy(() =>
   import('@/pages/VerificationPage').then((m) => ({ default: m.VerificationPage }))
 )
+const RoutePlannerPage = lazy(() =>
+  import('@/pages/RoutePlannerPage').then((m) => ({ default: m.RoutePlannerPage }))
+)
+const MessagingPage = lazy(() =>
+  import('@/pages/MessagingPage').then((m) => ({ default: m.MessagingPage }))
+)
+const WasteComparisonPage = lazy(() =>
+  import('@/pages/WasteComparisonPage').then((m) => ({ default: m.WasteComparisonPage }))
+)
+const PredictiveAnalyticsPage = lazy(() =>
+  import('@/pages/PredictiveAnalyticsPage').then((m) => ({ default: m.PredictiveAnalyticsPage }))
+)
 
 // eslint-disable-next-line react-refresh/only-export-components
 function PageFallback() {
@@ -97,7 +109,11 @@ export const router = createBrowserRouter([
       { path: 'analytics', element: <AnalyticsPage /> },
       { path: 'map', element: <WasteMapPage /> },
       { path: 'admin', element: <AdminDashboardPage /> },
-      { path: 'verify', element: <VerificationPage /> }
+      { path: 'verify', element: <VerificationPage /> },
+      { path: 'route-planner', element: <RoutePlannerPage /> },
+      { path: 'messages', element: <MessagingPage /> },
+      { path: 'compare', element: <WasteComparisonPage /> },
+      { path: 'predictions', element: <PredictiveAnalyticsPage /> }
     ]
   },
   { path: '*', element: <NotFoundPage /> }
