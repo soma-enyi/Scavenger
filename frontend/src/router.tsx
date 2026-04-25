@@ -46,6 +46,12 @@ const AnalyticsPage = lazy(() =>
 const WasteMapPage = lazy(() =>
   import('@/pages/WasteMapPage').then((m) => ({ default: m.WasteMapPage }))
 )
+const AdminDashboardPage = lazy(() =>
+  import('@/pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage }))
+)
+const VerificationPage = lazy(() =>
+  import('@/pages/VerificationPage').then((m) => ({ default: m.VerificationPage }))
+)
 
 // eslint-disable-next-line react-refresh/only-export-components
 function PageFallback() {
@@ -89,7 +95,9 @@ export const router = createBrowserRouter([
       { path: 'tracker', element: <SupplyChainTrackerPage /> },
       { path: 'community', element: <CommunityPage /> },
       { path: 'analytics', element: <AnalyticsPage /> },
-      { path: 'map', element: <WasteMapPage /> }
+      { path: 'map', element: <WasteMapPage /> },
+      { path: 'admin', element: <AdminDashboardPage /> },
+      { path: 'verify', element: <VerificationPage /> }
     ]
   },
   { path: '*', element: <NotFoundPage /> }
