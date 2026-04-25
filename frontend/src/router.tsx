@@ -70,6 +70,9 @@ const SubscriptionsPage = lazy(() =>
 const CharityDonationsPage = lazy(() =>
   import('@/pages/CharityDonationsPage').then((m) => ({ default: m.CharityDonationsPage }))
 )
+const ImpactCalculatorPage = lazy(() =>
+  import('@/pages/ImpactCalculatorPage').then((m) => ({ default: m.ImpactCalculatorPage }))
+)
 
 // eslint-disable-next-line react-refresh/only-export-components
 function PageFallback() {
@@ -121,7 +124,8 @@ export const router = createBrowserRouter([
       { path: 'compare', element: <WasteComparisonPage /> },
       { path: 'predictions', element: <PredictiveAnalyticsPage /> },
       { path: 'subscriptions', element: <SubscriptionsPage /> },
-      { path: 'charities', element: <CharityDonationsPage /> }
+      { path: 'charities', element: <CharityDonationsPage /> },
+      { path: 'impact', element: <ImpactCalculatorPage /> }
     ]
   },
   { path: '*', element: <NotFoundPage /> }
