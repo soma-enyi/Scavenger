@@ -12,7 +12,10 @@ import {
   Wallet,
   LogOut,
   Recycle,
-  Map
+  Map,
+  ShieldAlert,
+  ShieldCheck,
+  User,
 } from 'lucide-react'
 import { useWallet } from '@/context/WalletContext'
 import { useAuth } from '@/context/AuthContext'
@@ -56,6 +59,18 @@ const NAV_LINKS = [
     href: '/map',
     roles: ['Recycler', 'Collector', 'Manufacturer'],
     icon: Map
+  },
+  {
+    label: 'Verify',
+    href: '/verify',
+    roles: ['Collector'],
+    icon: ShieldCheck
+  },
+  {
+    label: 'Admin',
+    href: '/admin',
+    roles: ['Admin'],
+    icon: ShieldAlert
   }
 ]
 
